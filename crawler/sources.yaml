@@ -1,0 +1,58 @@
+# Nigerian Grants/Scholarships/Policies Sources
+sources:
+  - name: NDPC Education
+    url: https://ndpc.gov.ng/education-updates
+    type: rss
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: h1, .title
+      content: .content, article
+      
+  - name: TETFund
+    url: https://tetfund.gov.ng/research-calls
+    type: html
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: h1, .page-title
+      content: .main-content, article
+      
+  - name: CBN Research
+    url: https://www.cbn.gov.ng/research
+    type: html
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: h1
+      content: .content-body
+      
+  - name: Federal Ministry of Education
+    url: https://education.gov.ng/announcements
+    type: html
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: h1, .announcement-title
+      content: .announcement-content
+      
+  - name: AI4D Africa
+    url: https://ai4d.ai/opportunities
+    type: rss
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: title
+      content: description
+      
+  - name: NIH Grants (Nigeria)
+    url: https://grants.nih.gov/grants/guide
+    type: html
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: h1
+      content: .grant-details
+    filters:
+      country: Nigeria
+
