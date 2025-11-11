@@ -19,6 +19,14 @@ Cron → Crawler → Deduper → Ingest → RAG (Chroma) → Change Detector →
 Opportunity Extractor → Proposal Writer → Digest Builder → WhatsApp
 ```
 
+### Embedding Service Architecture
+
+The system supports both local and remote embedding generation:
+- **Local Mode** (default): Uses SentenceTransformer models directly
+- **Remote Mode**: Calls a separate embedding microservice (deployed on Hugging Face Spaces)
+
+The embedding service is a lightweight FastAPI application that can be deployed separately to reduce memory usage in the main application. Configure via `EMBEDDING_PROVIDER` environment variable.
+
 ## Setup
 
 ### Prerequisites
@@ -90,6 +98,20 @@ LLM_API_KEY=your_api_key_here
 # RAG Configuration
 CHROMA_PERSIST_DIR=./chroma_db
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_PROVIDER=sentence_transformers
+EMBEDDING_SERVICE_URL=
+EMBEDDING_SERVICE_API_KEY=
+```
+
+**Embedding Provider Options:**
+- `sentence_transformers` (default): Uses local SentenceTransformer model
+- `remote`: Uses remote embedding service (configure `EMBEDDING_SERVICE_URL`)
+
+For Hugging Face Space deployment, set:
+```env
+EMBEDDING_PROVIDER=remote
+EMBEDDING_SERVICE_URL=https://your-embedding-space.hf.space
+EMBEDDING_SERVICE_API_KEY=your_api_key_here  # Optional, for authentication
 ```
 
 ## Running the Application

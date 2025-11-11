@@ -19,8 +19,11 @@ This is a production-ready AI Agent system for monitoring and delivering Nigeria
 ### 3. RAG Store (`rag/`)
 - **ChromaDB**: Vector store for embeddings
 - **Chunking**: Heading-aware text chunking (800-1200 tokens)
-- **Embeddings**: Sentence transformers
+- **Embeddings**: Sentence transformers (local) or remote embedding service
 - **Query**: Semantic search with citations
+- **Embedding Client**: Supports both local and remote embedding generation
+  - Local mode: Uses SentenceTransformer models directly (default)
+  - Remote mode: Calls separate embedding microservice (deployed on Hugging Face Spaces)
 
 ### 4. Agents (`agents/`)
 - **ChangeDetector**: LLM-powered change detection
@@ -103,8 +106,20 @@ All configuration via `.env` file:
 - WhatsApp credentials
 - LLM provider/API key
 - RAG configuration
+  - Embedding provider (local/remote)
+  - Embedding service URL (for remote mode)
+  - Embedding service API key (optional)
 - Crawler settings
 - Cron schedule
+
+### Embedding Service Architecture
+
+The system supports a split embedding architecture for Hugging Face Space deployment:
+- **Local Mode** (default): Uses SentenceTransformer models directly in the main application
+- **Remote Mode**: Calls a separate embedding microservice deployed on Hugging Face Spaces
+  - Reduces memory usage in the main application
+  - Allows independent scaling of embedding generation
+  - Configure via `EMBEDDING_PROVIDER=remote` and `EMBEDDING_SERVICE_URL`
 
 ## Testing
 

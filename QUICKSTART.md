@@ -19,8 +19,14 @@ playwright install chromium
 
 2. **Configure environment**
 ```bash
-cp env.example .env
+cp .env.example .env
 # Edit .env with your credentials
+```
+
+**Note:** For Hugging Face Space deployment, configure embedding service:
+```env
+EMBEDDING_PROVIDER=remote
+EMBEDDING_SERVICE_URL=https://your-embedding-space.hf.space
 ```
 
 3. **Setup database**
