@@ -1,7 +1,7 @@
 """Database models."""
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, DateTime, 
-    ForeignKey, Float, BLOB, CheckConstraint, Index
+    ForeignKey, Float, BLOB, CheckConstraint, Index,LargeBinary
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -37,7 +37,7 @@ class Document(Base):
     http_hash = Column(String(64), nullable=False, index=True)  # SHA256 hash
     mime = Column(String(100), nullable=False)
     raw_text = Column(Text)
-    raw_blob = Column(BLOB)
+    raw_blob = Column(LargeBinary)
     
     source = relationship("Source", back_populates="documents")
     versions = relationship("DocVersion", back_populates="document")
