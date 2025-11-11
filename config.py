@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # RAG Configuration
     rag_vector_store: str = os.getenv("RAG_VECTOR_STORE", "chroma")
     chroma_persist_dir: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
-    embedding_model: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     
     # Crawler Configuration
     crawler_user_agent: str = os.getenv("CRAWLER_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
