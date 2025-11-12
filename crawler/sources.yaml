@@ -1,58 +1,257 @@
-# Nigerian Grants/Scholarships/Policies Sources
+# Nigerian Grants/Scholarships/Policies Sources (curated, live endpoints)
 sources:
-  - name: NDPC Education
-    url: https://ndpc.gov.ng/education-updates
-    type: rss
-    schedule_cron: "0 6 * * *"
-    active: true
-    selectors:
-      title: h1, .title
-      content: .content, article
-      
-  - name: TETFund
-    url: https://tetfund.gov.ng/research-calls
+  # ——— Core Nigerian Policy/Regulators ———
+  - name: NDPC News
+    url: https://ndpc.gov.ng/news/
     type: html
     schedule_cron: "0 6 * * *"
     active: true
-    selectors:
-      title: h1, .page-title
-      content: .main-content, article
-      
-  - name: CBN Research
-    url: https://www.cbn.gov.ng/research
-    type: html
-    schedule_cron: "0 6 * * *"
-    active: true
-    selectors:
-      title: h1
-      content: .content-body
-      
-  - name: Federal Ministry of Education
-    url: https://education.gov.ng/announcements
-    type: html
-    schedule_cron: "0 6 * * *"
-    active: true
-    selectors:
-      title: h1, .announcement-title
-      content: .announcement-content
-      
-  - name: AI4D Africa
-    url: https://ai4d.ai/opportunities
-    type: rss
-    schedule_cron: "0 6 * * *"
-    active: true
-    selectors:
-      title: title
-      content: description
-      
-  - name: NIH Grants (Nigeria)
-    url: https://grants.nih.gov/grants/guide
-    type: html
-    schedule_cron: "0 6 * * *"
-    active: true
-    selectors:
-      title: h1
-      content: .grant-details
-    filters:
-      country: Nigeria
+    selectors: { title: h1, content: article, date: time }
+    tags: [policy, data-protection] # e.g., GAID, guidance
+    # ref: :contentReference[oaicite:0]{index=0}
 
+  - name: NDPC Site (category: news)
+    url: https://ndpc.gov.ng/category/news/
+    type: html
+    schedule_cron: "30 6 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    # ref: :contentReference[oaicite:1]{index=1}
+
+  - name: SEC Nigeria Circulars
+    url: https://sec.gov.ng/for-investors/keep-track-of-circulars/
+    type: html
+    schedule_cron: "0 7 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [policy, finance-education, governance]
+    # ref: :contentReference[oaicite:2]{index=2}
+
+  - name: CBN News RSS
+    url: https://www.cbn.gov.ng/RSS/createrssfromdb.html
+    type: rss
+    schedule_cron: "0 7 * * *"
+    active: true
+    selectors: { title: title, content: description, date: pubDate }
+    tags: [essay-competitions, notices]
+    # ref: :contentReference[oaicite:3]{index=3}
+
+  - name: CBN Economic & Financial Review
+    url: https://dc.cbn.gov.ng/efr/
+    type: html
+    schedule_cron: "15 7 * * *"
+    active: true
+    selectors: { title: h1, content: main, date: .article-date }
+    tags: [research, policy]
+    # ref: :contentReference[oaicite:4]{index=4}
+
+  # ——— TETFund / National Research ———
+  - name: TETFund Home
+    url: https://tetfund.gov.ng/
+    type: html
+    schedule_cron: "0 8 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [nrf, interventions]
+    # ref: :contentReference[oaicite:5]{index=5}
+
+  - name: TETFund NRF Portal (calls/resources)
+    url: https://nrf.tetfund.gov.ng/
+    type: html
+    schedule_cron: "30 8 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [nrf, application]
+    # ref: :contentReference[oaicite:6]{index=6}
+
+  - name: TETFund NRF Guidelines (static)
+    url: https://tetfund.gov.ng/index.php/guideline-6/
+    type: html
+    schedule_cron: "0 13 1 * *"   # monthly
+    active: true
+    selectors: { title: h1, content: article }
+    tags: [guidelines]
+    # ref: :contentReference[oaicite:7]{index=7}
+
+  # ——— Federal Ministry of Education / Scholarships ———
+  - name: FME Scholarships & Notices
+    url: https://education.gov.ng/
+    type: html
+    schedule_cron: "0 9 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [scholarship, bursary]
+    # ref: :contentReference[oaicite:8]{index=8}
+
+  - name: FME Commonwealth Scholarships (updates/PDF)
+    url: https://education.gov.ng/2026-2027-commonwealth-scholarships/
+    type: html
+    schedule_cron: "30 9 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [scholarship]
+    # ref: :contentReference[oaicite:9]{index=9}
+
+  # ——— NITDA / Digital Economy ———
+  - name: NITDA (announcements)
+    url: https://nitda.gov.ng/
+    type: html
+    schedule_cron: "0 10 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [programmes, capacity, announcements]
+    # ref: :contentReference[oaicite:10]{index=10}
+
+  - name: NITDA 3MTT Programme
+    url: https://3mtt.nitda.gov.ng/
+    type: html
+    schedule_cron: "15 10 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [capacity-building]
+    # ref: :contentReference[oaicite:11]{index=11}
+
+  - name: NITDA NCAIR Scholarships (category)
+    url: https://ncair.nitda.gov.ng/category/scholarships/
+    type: html
+    schedule_cron: "30 10 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [scholarship, AI]
+    # ref: :contentReference[oaicite:12]{index=12}
+
+  # ——— Health/Research Institutes ———
+  - name: NIMR (Grant Updates)
+    url: https://nimr.gov.ng/research-and-grant-updates/
+    type: html
+    schedule_cron: "0 11 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [health, grants]
+    # ref: :contentReference[oaicite:13]{index=13}
+
+  # ——— University Research Offices (sample; add your own) ———
+  - name: UNILAG Research Office (digest/calls)
+    url: https://research.unilag.edu.ng/
+    type: html
+    schedule_cron: "0 12 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [calls, internal, external]
+    # ref: :contentReference[oaicite:14]{index=14}
+
+  - name: UNILAG Grant Digest (news post)
+    url: https://unilag.edu.ng/weekly-grant-digest-read-and-apply-for-research-grants-now/
+    type: html
+    schedule_cron: "30 12 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    # ref: :contentReference[oaicite:15]{index=15}
+
+  - name: UI Research Management Office
+    url: https://rmo.ui.edu.ng/
+    type: html
+    schedule_cron: "0 13 * * *"
+    active: true
+    selectors: { title: h1, content: main, date: time }
+    # ref: :contentReference[oaicite:16]{index=16}
+
+  # ——— Pan-African / Regional Calls ———
+  - name: AI4D Africa (Calls)
+    url: https://www.ai4d.ai/calls
+    type: html
+    schedule_cron: "0 14 * * *"
+    active: true
+    selectors: { title: h1, content: main, date: time }
+    tags: [AI, grants]
+    # ref: :contentReference[oaicite:17]{index=17}
+
+  - name: IDRC AI4D Calls (official)
+    url: https://idrc-crdi.ca/en/funding/call-concept-notes-socio-economic-impacts-artificial-intelligence-africa
+    type: html
+    schedule_cron: "15 14 * * *"
+    active: true
+    selectors: { title: h1, content: main, date: time }
+    tags: [AI, research]
+    # ref: :contentReference[oaicite:18]{index=18}
+
+  - name: African Academy of Sciences – Funding
+    url: https://aasciences.africa/funding-opportunities
+    type: html
+    schedule_cron: "30 14 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [pan-africa, research]
+    # ref: :contentReference[oaicite:19]{index=19}
+
+  - name: TWAS – Opportunities
+    url: https://twas.org/opportunities
+    type: html
+    schedule_cron: "45 14 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [global, research, developing-countries]
+    # ref: :contentReference[oaicite:20]{index=20}
+
+  # ——— Energy sector scholarships (popular in NG) ———
+  - name: PTDF Scholarship Portal
+    url: https://scholarship.ptdf.gov.ng/
+    type: html
+    schedule_cron: "0 15 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [scholarship, oil-gas]
+    # ref: :contentReference[oaicite:21]{index=21}
+
+  - name: PTDF News (announcements)
+    url: https://ptdf.gov.ng/news
+    type: html
+    schedule_cron: "15 15 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    # ref: :contentReference[oaicite:22]{index=22}
+
+  - name: NNPC–SEPLAT Undergraduate Scholarship
+    url: https://www.seplatenergy.com/news-insights/news/nnpcseplat-jv-national-undergraduate-scholarship/
+    type: html
+    schedule_cron: "30 15 * * *"
+    active: true
+    selectors: { title: h1, content: article, date: time }
+    tags: [scholarship]
+    # ref: :contentReference[oaicite:23]{index=23}
+
+  - name: NNPC–TotalEnergies International Masters (news)
+    url: https://corporate.totalenergies.ng/international-masters-degree-scholarship-2025-2026
+    type: html
+    schedule_cron: "45 15 * * *"
+    active: true
+    selectors: { title: h1, content: main, date: time }
+    # ref: :contentReference[oaicite:24]{index=24}
+
+  # ——— Major international programmes (Nigeria-eligible) ———
+  - name: Commonwealth Scholarships (CSC Apply)
+    url: https://cscuk.fcdo.gov.uk/apply/
+    type: html
+    schedule_cron: "0 16 * * *"
+    active: true
+    selectors: { title: h1, content: main, date: time }
+    tags: [scholarship, UK]
+    # ref: :contentReference[oaicite:25]{index=25}
+
+  - name: Chevening (Nigeria page)
+    url: https://www.chevening.org/scholarship/nigeria/
+    type: html
+    schedule_cron: "15 16 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [scholarship, UK]
+    # ref: :contentReference[oaicite:26]{index=26}
+
+  - name: Erasmus+ – Opportunities for Individuals
+    url: https://erasmus-plus.ec.europa.eu/opportunities/opportunities-for-individuals
+    type: html
+    schedule_cron: "30 16 * * *"
+    active: true
+    selectors: { title: h1, content: main }
+    tags: [scholarship, mobility, EU]
+    # ref: :contentReference[oaicite:27]{index=27}
