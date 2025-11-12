@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict
 from sqlalchemy.orm import Session
 from database.models import Opportunity, Subscriber
-from tools.whatsapp import WhatsAppSender
+from tools.whatsapp import get_whatsapp_sender, BaseWhatsAppSender
 from tools.schemas import DigestItem
 from datetime import datetime
 
@@ -16,7 +16,7 @@ class DigestNotifier:
     def __init__(self, db: Session):
         """Initialize digest notifier."""
         self.db = db
-        self.whatsapp_sender = WhatsAppSender()
+        self.whatsapp_sender: BaseWhatsAppSender = get_whatsapp_sender()
     
     def get_digest_items(self, limit: int = 3) -> List[DigestItem]:
         """

@@ -3,15 +3,13 @@ import logging
 from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import json
 
 from config import settings
 from database.session import get_db, init_db
 from database.models import Subscriber, Opportunity, Proposal
-from tools.whatsapp import WhatsAppSender
-from tools.schemas import WhatsAppMessage, DigestItem
+from tools.whatsapp import get_whatsapp_sender, BaseWhatsAppSender
 from agents.router import AgentRouter
 from agents.proposal_writer import ProposalWriter
 from tools.ics_generator import generate_ics
@@ -24,9 +22,84 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Nigerian Grants Agent", version="1.0.0")
 
 # Initialize components
-whatsapp_sender = WhatsAppSender()
+whatsapp_sender: BaseWhatsAppSender = get_whatsapp_sender()
 agent_router = AgentRouter()
 proposal_writer = ProposalWriter()
+
+
+def normalize_whatsapp_number(number: Optional[str]) -> str:
+    """Normalize WhatsApp numbers to digits only."""
+    if not number:
+        return ""
+    normalized = number.replace("whatsapp:", "").replace("whatsapp://", "")
+    normalized = normalized.strip()
+    normalized = normalized.lstrip("+")
+    return normalized
+
+
+async def process_incoming_message(from_number: str, message_text: str, db: Session) -> None:
+    """Process a normalized incoming message."""
+    if not from_number or not message_text:
+        return
+
+    text_clean = message_text.strip()
+    if not text_clean:
+        return
+
+    upper_text = text_clean.upper()
+
+    # Handle unsubscribe
+    if upper_text in ["STOP", "UNSUBSCRIBE"]:
+        subscriber = (
+            db.query(Subscriber)
+            .filter(Subscriber.handle == from_number, Subscriber.channel == "whatsapp")
+            .first()
+        )
+        if subscriber:
+            subscriber.active = False
+            db.commit()
+            whatsapp_sender.send_text(
+                from_number,
+                "You have been unsubscribed. Send 'SUBSCRIBE' to resubscribe.",
+            )
+        return
+
+    # Handle subscribe
+    if upper_text in ["SUBSCRIBE", "START"]:
+        subscriber = (
+            db.query(Subscriber)
+            .filter(Subscriber.handle == from_number, Subscriber.channel == "whatsapp")
+            .first()
+        )
+        if not subscriber:
+            subscriber = Subscriber(
+                channel="whatsapp",
+                handle=from_number,
+                locale="en",
+                active=True,
+            )
+            db.add(subscriber)
+        else:
+            subscriber.active = True
+        db.commit()
+        whatsapp_sender.send_text(
+            from_number,
+            "Welcome! You are now subscribed. Send 'digest' for weekly digest or ask a question.",
+        )
+        return
+
+    # Handle digest request
+    if text_clean.lower() == "digest":
+        await handle_digest_request(from_number, db)
+        return
+
+    # Handle numbered proposal request
+    if text_clean.isdigit():
+        await handle_proposal_request(from_number, int(text_clean), db)
+        return
+
+    # Default: treat as general query
+    await handle_query(from_number, text_clean, db)
 
 
 @app.on_event("startup")
@@ -45,104 +118,111 @@ async def health():
     return {"status": "healthy", "version": "1.0.0"}
 
 
-@app.get("/webhook")
-async def verify_webhook(request: Request):
-    """Verify WhatsApp webhook."""
+@app.get("/whatsapp/webhook")
+async def verify_whatsapp_webhook(request: Request):
+    """Verify Meta WhatsApp webhook."""
+    if (settings.whatsapp_provider or "meta").lower() != "meta":
+        raise HTTPException(status_code=404, detail="Webhook verification not available for Twilio")
+
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
-    
+
     if mode == "subscribe" and token == settings.whatsapp_verify_token:
         logger.info("Webhook verified successfully")
         return Response(content=challenge, media_type="text/plain")
-    else:
-        logger.warning("Webhook verification failed")
-        raise HTTPException(status_code=403, detail="Verification failed")
+
+    logger.warning("Webhook verification failed")
+    raise HTTPException(status_code=403, detail="Verification failed")
 
 
-@app.post("/webhook")
-async def handle_webhook(request: Request, db: Session = Depends(get_db)):
-    """Handle incoming WhatsApp messages."""
+@app.get("/webhook", include_in_schema=False)
+async def legacy_verify_webhook(request: Request):
+    """Legacy webhook verification endpoint for backwards compatibility."""
+    return await verify_whatsapp_webhook(request)
+
+
+@app.post("/whatsapp/webhook")
+async def handle_whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
+    """Handle incoming WhatsApp webhook for configured provider."""
+    provider = (settings.whatsapp_provider or "meta").lower()
+
+    if provider == "twilio":
+        return await handle_twilio_webhook(request, db)
+
+    return await handle_meta_webhook(request, db)
+
+
+@app.post("/webhook", include_in_schema=False)
+async def legacy_handle_webhook(request: Request, db: Session = Depends(get_db)):
+    """Legacy webhook endpoint for backwards compatibility."""
+    return await handle_whatsapp_webhook(request, db)
+
+
+async def handle_meta_webhook(request: Request, db: Session) -> JSONResponse:
+    """Handle Meta WhatsApp webhook payload."""
     try:
         body = await request.json()
-        logger.info(f"Received webhook: {json.dumps(body, indent=2)}")
-        
-        # Parse WhatsApp webhook payload
-        if "object" not in body or body["object"] != "whatsapp_business_account":
+        logger.info("Received Meta WhatsApp webhook: %s", json.dumps(body, indent=2))
+
+        if body.get("object") != "whatsapp_business_account":
             return JSONResponse(content={"status": "ignored"})
-        
+
         entries = body.get("entry", [])
         for entry in entries:
             changes = entry.get("changes", [])
             for change in changes:
                 value = change.get("value", {})
                 messages = value.get("messages", [])
-                
+
                 for message in messages:
-                    from_number = message.get("from")
+                    from_number = normalize_whatsapp_number(message.get("from"))
                     message_text = message.get("text", {}).get("body", "")
-                    message_id = message.get("id")
-                    timestamp = message.get("timestamp")
-                    
+
                     if not message_text:
                         continue
-                    
-                    # Handle unsubscribe
-                    if message_text.upper().strip() in ["STOP", "UNSUBSCRIBE"]:
-                        subscriber = db.query(Subscriber).filter(
-                            Subscriber.handle == from_number,
-                            Subscriber.channel == "whatsapp"
-                        ).first()
-                        if subscriber:
-                            subscriber.active = False
-                            db.commit()
-                            whatsapp_sender.send_text(
-                                from_number,
-                                "You have been unsubscribed. Send 'SUBSCRIBE' to resubscribe."
-                            )
-                        continue
-                    
-                    # Handle subscribe
-                    if message_text.upper().strip() in ["SUBSCRIBE", "START"]:
-                        subscriber = db.query(Subscriber).filter(
-                            Subscriber.handle == from_number,
-                            Subscriber.channel == "whatsapp"
-                        ).first()
-                        if not subscriber:
-                            subscriber = Subscriber(
-                                channel="whatsapp",
-                                handle=from_number,
-                                locale="en",
-                                active=True
-                            )
-                            db.add(subscriber)
-                        else:
-                            subscriber.active = True
-                        db.commit()
-                        whatsapp_sender.send_text(
-                            from_number,
-                            "Welcome! You are now subscribed. Send 'digest' for weekly digest or ask a question."
-                        )
-                        continue
-                    
-                    # Handle digest request
-                    if message_text.lower().strip() == "digest":
-                        await handle_digest_request(from_number, db)
-                        continue
-                    
-                    # Handle proposal request (1, 2, 3, etc.)
-                    if message_text.strip().isdigit():
-                        item_num = int(message_text.strip())
-                        await handle_proposal_request(from_number, item_num, db)
-                        continue
-                    
-                    # Handle general query
-                    await handle_query(from_number, message_text, db)
-        
+
+                    await process_incoming_message(from_number, message_text, db)
+
         return JSONResponse(content={"status": "ok"})
-    except Exception as e:
-        logger.error(f"Error handling webhook: {e}")
-        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+    except Exception as exc:
+        logger.error("Error handling Meta webhook: %s", exc)
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
+
+
+async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
+    """Handle Twilio WhatsApp webhook payload."""
+    try:
+        form = await request.form()
+        form_dict = {k: v for k, v in form.multi_items()}
+        logger.info("Received Twilio WhatsApp webhook: %s", form_dict)
+
+        signature = request.headers.get("X-Twilio-Signature", "")
+        if not settings.twilio_auth_token:
+            logger.error("Twilio auth token not configured")
+            raise HTTPException(status_code=500, detail="Twilio configuration incomplete")
+
+        from twilio.request_validator import RequestValidator  # type: ignore
+
+        validator = RequestValidator(settings.twilio_auth_token)
+        if not validator.validate(str(request.url), form_dict, signature):
+            logger.warning("Invalid Twilio signature")
+            raise HTTPException(status_code=403, detail="Invalid Twilio signature")
+
+        message_text = form_dict.get("Body", "")
+        if not message_text:
+            logger.info("No message body in Twilio webhook, ignoring")
+            return JSONResponse(content={"status": "ignored"})
+
+        from_number = normalize_whatsapp_number(form_dict.get("From"))
+        await process_incoming_message(from_number, message_text, db)
+
+        return JSONResponse(content={"status": "ok"})
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Error handling Twilio webhook: %s", exc)
+        return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
 
 
 async def handle_digest_request(from_number: str, db: Session):

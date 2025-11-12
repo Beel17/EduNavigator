@@ -87,8 +87,8 @@ This is a production-ready AI Agent system for monitoring and delivering Nigeria
 ## API Endpoints
 
 - `GET /health` - Health check
-- `GET /webhook` - WhatsApp webhook verification
-- `POST /webhook` - WhatsApp webhook handler
+- `GET /whatsapp/webhook` - Meta webhook verification
+- `POST /whatsapp/webhook` - Unified WhatsApp webhook handler (Meta & Twilio)
 - `POST /cron/run` - Manual cron trigger
 
 ## WhatsApp Commands
@@ -103,7 +103,7 @@ This is a production-ready AI Agent system for monitoring and delivering Nigeria
 
 All configuration via `.env` file:
 - Database URL
-- WhatsApp credentials
+- WhatsApp credentials & provider (Meta/Twilio)
 - LLM provider/API key
 - RAG configuration
   - Embedding provider (local/remote)
@@ -120,6 +120,11 @@ The system supports a split embedding architecture for Hugging Face Space deploy
   - Reduces memory usage in the main application
   - Allows independent scaling of embedding generation
   - Configure via `EMBEDDING_PROVIDER=remote` and `EMBEDDING_SERVICE_URL`
+
+### WhatsApp Provider Options
+
+- **Meta (default)**: Uses the Meta Cloud API with verify-token workflow on `GET /whatsapp/webhook`.
+- **Twilio**: Uses Twilio Programmable Messaging with signature validation on `POST /whatsapp/webhook` and requires Twilio account SID, auth token, and WhatsApp-enabled number.
 
 ## Testing
 

@@ -13,11 +13,19 @@ class Settings(BaseSettings):
     # Database
     database_url: str = os.getenv("DATABASE_URL", "mysql+pymysql://root:123456789@localhost:3306/nigerian_grants_db")
     
-    # WhatsApp Cloud API
+    # WhatsApp Providers
+    whatsapp_provider: str = os.getenv("WHATSAPP_PROVIDER", "twilio")
+    
+    # Meta WhatsApp Cloud API
     whatsapp_verify_token: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
     whatsapp_access_token: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
     whatsapp_phone_number_id: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
     whatsapp_api_version: str = os.getenv("WHATSAPP_API_VERSION", "v18.0")
+    
+    # Twilio WhatsApp
+    twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID", "")
+    twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN", "")
+    twilio_whatsapp_number: str = os.getenv("TWILIO_WHATSAPP_NUMBER", "")
     
     # LLM Configuration
     llm_provider: str = os.getenv("LLM_PROVIDER", "groq")

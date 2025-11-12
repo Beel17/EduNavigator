@@ -27,6 +27,15 @@ The system supports both local and remote embedding generation:
 
 The embedding service is a lightweight FastAPI application that can be deployed separately to reduce memory usage in the main application. Configure via `EMBEDDING_PROVIDER` environment variable.
 
+### WhatsApp Providers
+
+The agent supports both Meta and Twilio WhatsApp backends:
+
+- **Meta (default)**: Set `WHATSAPP_PROVIDER=meta` and configure the Meta Cloud API credentials. Webhook verification uses `GET /whatsapp/webhook` with the existing verify token flow.
+- **Twilio**: Set `WHATSAPP_PROVIDER=twilio` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_WHATSAPP_NUMBER`. Twilio webhooks send `application/x-www-form-urlencoded` payloads to `POST /whatsapp/webhook`; the API validates `X-Twilio-Signature` with your auth token before processing messages.
+
+The application automatically selects the correct sender implementation at startup based on `WHATSAPP_PROVIDER`.
+
 ## Setup
 
 ### Prerequisites
@@ -85,10 +94,19 @@ Edit `.env` file with your configuration:
 # Database
 DATABASE_URL=mysql+pymysql://user:password@localhost:3306/nigerian_grants_db
 
-# WhatsApp Cloud API
+# WhatsApp Providers
+WHATSAPP_PROVIDER=meta
+
+# Meta WhatsApp Cloud API
 WHATSAPP_VERIFY_TOKEN=your_verify_token_here
 WHATSAPP_ACCESS_TOKEN=your_access_token_here
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
+WHATSAPP_API_VERSION=v18.0
+
+# Twilio WhatsApp
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890
 
 # LLM Configuration
 LLM_PROVIDER=openai
@@ -140,8 +158,8 @@ GET /health
 
 ### WhatsApp Webhook
 ```bash
-GET /webhook?hub.mode=subscribe&hub.verify_token=TOKEN&hub.challenge=CHALLENGE
-POST /webhook
+GET /whatsapp/webhook?hub.mode=subscribe&hub.verify_token=TOKEN&hub.challenge=CHALLENGE  # Meta verification
+POST /whatsapp/webhook  # Meta & Twilio inbound messages
 ```
 
 ### Manual Cron Trigger

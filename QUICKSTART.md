@@ -29,6 +29,18 @@ EMBEDDING_PROVIDER=remote
 EMBEDDING_SERVICE_URL=https://your-embedding-space.hf.space
 ```
 
+**Switching WhatsApp Providers:**
+```env
+# Default Meta WhatsApp Cloud API
+WHATSAPP_PROVIDER=meta
+
+# Twilio WhatsApp (optional)
+WHATSAPP_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890
+```
+
 3. **Setup database**
 ```bash
 # Create database

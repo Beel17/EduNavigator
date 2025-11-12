@@ -1,7 +1,12 @@
 """Tools package."""
 from tools.pdf_extractor import extract_text_from_pdf, extract_text_from_pdf_bytes
 from tools.pdf_generator import generate_proposal_pdf
-from tools.whatsapp import WhatsAppSender
+from tools.whatsapp import (
+    MetaWhatsAppSender,
+    TwilioWhatsAppSender,
+    BaseWhatsAppSender,
+    get_whatsapp_sender,
+)
 from tools.ics_generator import generate_ics
 from tools.schemas import (
     CrawlOut,
@@ -18,7 +23,10 @@ __all__ = [
     "extract_text_from_pdf",
     "extract_text_from_pdf_bytes",
     "generate_proposal_pdf",
-    "WhatsAppSender",
+    "BaseWhatsAppSender",
+    "MetaWhatsAppSender",
+    "TwilioWhatsAppSender",
+    "get_whatsapp_sender",
     "generate_ics",
     "CrawlOut",
     "ChangeSummary",
