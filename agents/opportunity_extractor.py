@@ -33,7 +33,9 @@ If no opportunity found, return:
   "eligibility": null,
   "amount": null,
   "action": ""
-}"""
+}
+
+Respond with a single JSON object only. Do not include any text before or after the JSON."""
     
     def __init__(self, llm_client: Optional[LLMClient] = None):
         """Initialize opportunity extractor."""
@@ -82,23 +84,35 @@ Content:
                 elif isinstance(response, list):
                     opp_data = response[0] if response else {}
                 else:
+                    logger.debug(f"Unexpected response type from LLM: {type(response)}")
                     continue
                 
-                # Validate opportunity
-                if opp_data.get("title") and opp_data.get("url"):
+                # Validate opportunity - relax URL requirement (use provided URL if missing)
+                title = opp_data.get("title", "").strip()
+                if title:
+                    # Use provided URL if model didn't return one
+                    opp_url = opp_data.get("url", "").strip() or url
+                    
                     opp = OppExtract(
-                        title=opp_data.get("title", ""),
+                        title=title,
                         agency=opp_data.get("agency", "Unknown"),
-                        url=opp_data.get("url", url),
+                        url=opp_url,
                         deadline=opp_data.get("deadline"),
                         eligibility=opp_data.get("eligibility"),
                         amount=opp_data.get("amount"),
                         action=opp_data.get("action", "See details")
                     )
                     opportunities.append(opp)
+                    logger.info(f"Extracted opportunity: {title} from {url}")
+                else:
+                    logger.debug(f"Discarded opportunity data (no title): {opp_data}")
         
         except Exception as e:
-            logger.error(f"Error extracting opportunities: {e}")
+            logger.error(f"Error extracting opportunities from {url}: {e}", exc_info=True)
+            # Log partial response if available for debugging
+            if hasattr(e, 'args') and len(e.args) > 0:
+                logger.debug(f"Error details: {e.args}")
         
+        logger.info(f"Extracted {len(opportunities)} opportunities from {url}")
         return opportunities
 

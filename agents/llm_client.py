@@ -26,10 +26,11 @@ class LLMClient:
                 base_url=self.base_url
             )
         elif self.provider == "groq":
-            self.client = Groq(
-                api_key=self.api_key,
-                base_url=self.base_url
-            )
+            # Groq doesn't need base_url if empty; default to Groq's endpoint
+            if self.base_url:
+                self.client = Groq(api_key=self.api_key, base_url=self.base_url)
+            else:
+                self.client = Groq(api_key=self.api_key)
         else:
             # For other providers (Ollama, etc.), use OpenAI-compatible interface
             self.client = OpenAI(
@@ -70,7 +71,8 @@ class LLMClient:
                 "temperature": temp,
             }
             
-            if response_format:
+            # Only add response_format for OpenAI; Groq may ignore it
+            if response_format and self.provider == "openai":
                 kwargs["response_format"] = response_format
             
             response = self.client.chat.completions.create(**kwargs)
@@ -93,21 +95,65 @@ class LLMClient:
             system_prompt: System prompt
             user_prompt: User prompt
             schema: Optional JSON schema
-        
+            
         Returns:
             Parsed JSON dict
         """
-        response_format = {"type": "json_object"}
-        if schema:
-            # For models supporting JSON schema
-            response_format = {"type": "json_object", "schema": schema}
+        # For Groq, emphasize JSON-only in prompt; for OpenAI, use response_format
+        if self.provider == "groq":
+            # Enhance system prompt to ensure JSON-only response
+            enhanced_prompt = system_prompt + "\n\nIMPORTANT: Respond with a single JSON object only. Do not include any text before or after the JSON. Return only valid JSON."
+            response_format = None
+        else:
+            enhanced_prompt = system_prompt
+            response_format = {"type": "json_object"}
+            if schema:
+                # For models supporting JSON schema
+                response_format = {"type": "json_object", "schema": schema}
         
-        response = self.generate(system_prompt, user_prompt, response_format=response_format)
+        response = self.generate(enhanced_prompt, user_prompt, response_format=response_format)
         
         try:
             return json.loads(response)
         except json.JSONDecodeError as e:
-            logger.error(f"Error parsing JSON response: {e}")
-            logger.error(f"Response: {response}")
+            logger.warning(f"Direct JSON parse failed, attempting fallback extraction: {e}")
+            logger.debug(f"Raw response (first 500 chars): {response[:500]}")
+            
+            # Fallback: extract first JSON object from response
+            json_str = self._extract_json_from_text(response)
+            if json_str:
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    pass
+            
+            logger.error(f"Could not parse JSON from response: {response[:500]}")
             raise
+    
+    def _extract_json_from_text(self, text: str) -> Optional[str]:
+        """
+        Extract first JSON object from text using brace matching.
+        
+        Args:
+            text: Text that may contain JSON
+            
+        Returns:
+            Extracted JSON string or None
+        """
+        # Find first {
+        start_idx = text.find('{')
+        if start_idx == -1:
+            return None
+        
+        # Count braces to find matching }
+        brace_count = 0
+        for i in range(start_idx, len(text)):
+            if text[i] == '{':
+                brace_count += 1
+            elif text[i] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    return text[start_idx:i+1]
+        
+        return None
 
