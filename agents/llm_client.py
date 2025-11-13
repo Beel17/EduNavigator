@@ -26,10 +26,31 @@ class LLMClient:
                 base_url=self.base_url
             )
         elif self.provider == "groq":
-            # Groq doesn't need base_url if empty; default to Groq's endpoint
+            # Groq's default endpoint is https://api.groq.com/openai/v1
+            # Only use base_url if it's explicitly set to Groq's endpoint or empty
+            # Ignore OpenAI URLs to prevent malformed requests
+            groq_base_url = "https://api.groq.com/openai/v1"
+            
             if self.base_url:
-                self.client = Groq(api_key=self.api_key, base_url=self.base_url)
+                # Validate base_url - if it's an OpenAI URL, ignore it
+                if "api.openai.com" in self.base_url.lower():
+                    logger.warning(
+                        f"LLM_BASE_URL is set to OpenAI URL but provider is Groq. "
+                        f"Ignoring base_url and using Groq's default endpoint."
+                    )
+                    self.client = Groq(api_key=self.api_key)
+                elif "api.groq.com" in self.base_url.lower() or self.base_url == groq_base_url:
+                    # Valid Groq URL
+                    self.client = Groq(api_key=self.api_key, base_url=self.base_url)
+                else:
+                    # Unknown URL, log warning but try it
+                    logger.warning(
+                        f"Using custom base_url for Groq: {self.base_url}. "
+                        f"Expected: {groq_base_url} or empty."
+                    )
+                    self.client = Groq(api_key=self.api_key, base_url=self.base_url)
             else:
+                # No base_url set, use Groq's default
                 self.client = Groq(api_key=self.api_key)
         else:
             # For other providers (Ollama, etc.), use OpenAI-compatible interface
