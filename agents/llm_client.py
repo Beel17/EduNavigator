@@ -26,31 +26,40 @@ class LLMClient:
                 base_url=self.base_url
             )
         elif self.provider == "groq":
-            # Groq's default endpoint is https://api.groq.com/openai/v1
-            # Only use base_url if it's explicitly set to Groq's endpoint or empty
-            # Ignore OpenAI URLs to prevent malformed requests
-            groq_base_url = "https://api.groq.com/openai/v1"
+            # Groq client automatically appends /openai/v1/chat/completions
+            # If base_url includes /openai/v1, it will double to /openai/v1/openai/v1
+            # Solution: For Groq, always use default (don't pass base_url) unless it's a custom endpoint
             
             if self.base_url:
-                # Validate base_url - if it's an OpenAI URL, ignore it
-                if "api.openai.com" in self.base_url.lower():
+                base_url_lower = self.base_url.lower().rstrip('/')
+                
+                # Ignore OpenAI URLs
+                if "api.openai.com" in base_url_lower:
                     logger.warning(
-                        f"LLM_BASE_URL is set to OpenAI URL but provider is Groq. "
+                        f"LLM_BASE_URL is set to OpenAI URL ({self.base_url}) but provider is Groq. "
                         f"Ignoring base_url and using Groq's default endpoint."
                     )
                     self.client = Groq(api_key=self.api_key)
-                elif "api.groq.com" in self.base_url.lower() or self.base_url == groq_base_url:
-                    # Valid Groq URL
+                # If base_url includes /openai/v1, strip it (Groq SDK adds this itself)
+                elif "/openai/v1" in base_url_lower:
+                    # Extract just the domain (e.g., https://api.groq.com)
+                    normalized_url = base_url_lower.split("/openai/v1")[0].rstrip('/')
+                    logger.info(
+                        f"Stripping /openai/v1 from Groq base_url. Using: {normalized_url}"
+                    )
+                    self.client = Groq(api_key=self.api_key, base_url=normalized_url)
+                elif "api.groq.com" in base_url_lower:
+                    # Already just the domain, use as-is
                     self.client = Groq(api_key=self.api_key, base_url=self.base_url)
                 else:
-                    # Unknown URL, log warning but try it
+                    # Custom endpoint, try it as-is
                     logger.warning(
                         f"Using custom base_url for Groq: {self.base_url}. "
-                        f"Expected: {groq_base_url} or empty."
+                        f"This may cause issues if it includes /openai/v1."
                     )
                     self.client = Groq(api_key=self.api_key, base_url=self.base_url)
             else:
-                # No base_url set, use Groq's default
+                # No base_url set, use Groq's default (recommended)
                 self.client = Groq(api_key=self.api_key)
         else:
             # For other providers (Ollama, etc.), use OpenAI-compatible interface
@@ -177,4 +186,3 @@ class LLMClient:
                     return text[start_idx:i+1]
         
         return None
-
