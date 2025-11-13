@@ -118,6 +118,71 @@ async def health():
     return {"status": "healthy", "version": "1.0.0"}
 
 
+@app.get("/debug/opportunities")
+async def debug_opportunities(db: Session = Depends(get_db)):
+    """Debug endpoint to check opportunities in database."""
+    from sqlalchemy import or_, func
+    from datetime import datetime
+    
+    now = datetime.utcnow()
+    
+    # Get all opportunities
+    all_opps = db.query(Opportunity).all()
+    
+    # Get opportunities matching digest query
+    digest_opps = db.query(Opportunity).filter(
+        or_(
+            Opportunity.deadline >= now,
+            Opportunity.deadline.is_(None)
+        )
+    ).order_by(
+        Opportunity.score.desc(),
+        Opportunity.deadline.asc().nulls_last()
+    ).limit(3).all()
+    
+    # Get statistics
+    total_count = db.query(Opportunity).count()
+    with_deadline = db.query(Opportunity).filter(Opportunity.deadline.isnot(None)).count()
+    future_deadline = db.query(Opportunity).filter(Opportunity.deadline >= now).count()
+    past_deadline = db.query(Opportunity).filter(
+        Opportunity.deadline.isnot(None),
+        Opportunity.deadline < now
+    ).count()
+    null_deadline = db.query(Opportunity).filter(Opportunity.deadline.is_(None)).count()
+    
+    return {
+        "total_opportunities": total_count,
+        "with_deadline": with_deadline,
+        "future_deadline": future_deadline,
+        "past_deadline": past_deadline,
+        "null_deadline": null_deadline,
+        "digest_query_matches": len(digest_opps),
+        "all_opportunities": [
+            {
+                "id": opp.id,
+                "title": opp.title,
+                "deadline": opp.deadline.isoformat() if opp.deadline else None,
+                "score": opp.score,
+                "agency": opp.agency,
+                "url": opp.url,
+                "created_at": opp.created_at.isoformat() if opp.created_at else None
+            }
+            for opp in all_opps[:20]  # Limit to first 20
+        ],
+        "digest_opportunities": [
+            {
+                "id": opp.id,
+                "title": opp.title,
+                "deadline": opp.deadline.isoformat() if opp.deadline else None,
+                "score": opp.score,
+                "agency": opp.agency,
+                "url": opp.url
+            }
+            for opp in digest_opps
+        ]
+    }
+
+
 @app.get("/whatsapp/webhook")
 async def verify_whatsapp_webhook(request: Request):
     """Verify Meta WhatsApp webhook."""
@@ -195,8 +260,15 @@ async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
     try:
         form = await request.form()
         form_dict = {k: v for k, v in form.multi_items()}
-        logger.info("Received Twilio WhatsApp webhook: %s", form_dict)
-
+        
+        # Check if this is a status callback (sent, delivered, etc.)
+        message_status = form_dict.get("MessageStatus")
+        if message_status:
+            logger.debug("Received Twilio status callback: %s for MessageSid: %s", 
+                        message_status, form_dict.get("MessageSid", "unknown"))
+            return JSONResponse(content={"status": "ok"})
+        
+        # This is an incoming message - validate signature
         signature = request.headers.get("X-Twilio-Signature", "")
         if not settings.twilio_auth_token:
             logger.error("Twilio auth token not configured")
@@ -209,31 +281,72 @@ async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
             logger.warning("Invalid Twilio signature")
             raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
+        # Extract message content
         message_text = form_dict.get("Body", "")
         if not message_text:
             logger.info("No message body in Twilio webhook, ignoring")
             return JSONResponse(content={"status": "ignored"})
 
         from_number = normalize_whatsapp_number(form_dict.get("From"))
+        logger.info("Processing incoming Twilio message from %s: %s", from_number, message_text[:50])
         await process_incoming_message(from_number, message_text, db)
 
         return JSONResponse(content={"status": "ok"})
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Error handling Twilio webhook: %s", exc)
+        logger.error("Error handling Twilio webhook: %s", exc, exc_info=True)
         return JSONResponse(content={"status": "error", "message": str(exc)}, status_code=500)
 
 
 async def handle_digest_request(from_number: str, db: Session):
     """Handle digest request."""
     try:
-        # Get top opportunities
+        # Get top opportunities - include those with future deadlines or no deadline
+        from sqlalchemy import or_
+        now = datetime.utcnow()
+        
         opportunities = db.query(Opportunity).filter(
-            Opportunity.deadline >= datetime.utcnow()
-        ).order_by(Opportunity.score.desc(), Opportunity.deadline.asc()).limit(3).all()
+            or_(
+                Opportunity.deadline >= now,
+                Opportunity.deadline.is_(None)
+            )
+        ).order_by(
+            Opportunity.score.desc(),
+            Opportunity.deadline.asc().nulls_last()
+        ).limit(3).all()
+        
+        logger.info("Found %d opportunities for digest to %s", len(opportunities), from_number)
+        
+        # Log details about each opportunity found
+        for opp in opportunities:
+            logger.info("Opportunity: %s (deadline: %s, score: %s)", 
+                       opp.title, opp.deadline, opp.score)
         
         if not opportunities:
+            logger.warning("No opportunities found with future deadlines or no deadline")
+            # Check total count and breakdown for debugging
+            from sqlalchemy import func
+            total_count = db.query(Opportunity).count()
+            future_count = db.query(Opportunity).filter(Opportunity.deadline >= now).count()
+            null_count = db.query(Opportunity).filter(Opportunity.deadline.is_(None)).count()
+            past_count = db.query(Opportunity).filter(
+                Opportunity.deadline.isnot(None),
+                Opportunity.deadline < now
+            ).count()
+            
+            logger.warning(
+                "Opportunity breakdown - Total: %d, Future: %d, Null: %d, Past: %d",
+                total_count, future_count, null_count, past_count
+            )
+            
+            # Log a few sample opportunities for debugging
+            sample_opps = db.query(Opportunity).limit(5).all()
+            for sample in sample_opps:
+                logger.warning(
+                    "Sample opportunity: %s (deadline: %s, score: %s)",
+                    sample.title, sample.deadline, sample.score
+                )
             whatsapp_sender.send_text(
                 from_number,
                 "No opportunities available at the moment. Check back later!"
@@ -250,15 +363,18 @@ async def handle_digest_request(from_number: str, db: Session):
                 "url": opp.url,
                 "opportunity_id": opp.id
             })
+            logger.info("Added opportunity to digest: %s (deadline: %s)", opp.title, opp.deadline)
         
         # Send digest
-        whatsapp_sender.send_digest(from_number, items)
-        
-        # Store digest state (simplified - in production, use Redis or DB)
-        # For now, we'll query fresh each time
+        logger.info("Sending digest with %d items to %s", len(items), from_number)
+        success = whatsapp_sender.send_digest(from_number, items)
+        if success:
+            logger.info("Digest sent successfully to %s", from_number)
+        else:
+            logger.error("Failed to send digest to %s", from_number)
         
     except Exception as e:
-        logger.error(f"Error handling digest request: {e}")
+        logger.error("Error handling digest request: %s", e, exc_info=True)
         whatsapp_sender.send_text(
             from_number,
             "Sorry, there was an error generating the digest. Please try again later."
@@ -268,10 +384,19 @@ async def handle_digest_request(from_number: str, db: Session):
 async def handle_proposal_request(from_number: str, item_num: int, db: Session):
     """Handle proposal request (1, 2, 3, etc.)."""
     try:
-        # Get opportunities (same logic as digest)
+        # Get opportunities (same logic as digest) - include those with future deadlines or no deadline
+        from sqlalchemy import or_
+        now = datetime.utcnow()
+        
         opportunities = db.query(Opportunity).filter(
-            Opportunity.deadline >= datetime.utcnow()
-        ).order_by(Opportunity.score.desc(), Opportunity.deadline.asc()).limit(3).all()
+            or_(
+                Opportunity.deadline >= now,
+                Opportunity.deadline.is_(None)
+            )
+        ).order_by(
+            Opportunity.score.desc(),
+            Opportunity.deadline.asc().nulls_last()
+        ).limit(3).all()
         
         if item_num < 1 or item_num > len(opportunities):
             whatsapp_sender.send_text(

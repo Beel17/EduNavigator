@@ -16,14 +16,14 @@ def test_source_config():
     """Test source configuration."""
     source = SourceConfig(
         name="Test Source",
-        url="https://example.com",
+        url="https://education.gov.ng/2026-2027-commonwealth-scholarships/",
         source_type="html",
         schedule_cron="0 6 * * *",
         active=True
     )
     
     assert source.name == "Test Source"
-    assert source.url == "https://example.com"
+    assert source.url == "https://education.gov.ng/2026-2027-commonwealth-scholarships/"
     assert source.type == "html"
     assert source.active is True
 

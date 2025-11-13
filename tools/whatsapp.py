@@ -28,6 +28,7 @@ class BaseWhatsAppSender:
 
     def send_digest(self, to: str, items: List[dict]) -> bool:
         if not items:
+            logger.warning("Attempted to send digest with no items to %s", to)
             return False
 
         message_lines = []
@@ -41,6 +42,7 @@ class BaseWhatsAppSender:
 
         message_lines.append("\nReply 1/2/3 for full one-pager + calendar invite.")
         message = "\n".join(message_lines)
+        logger.info("Digest message content (%d chars): %s", len(message), message[:200])
         return self.send_text(to, message)
 
 
@@ -149,11 +151,14 @@ class TwilioWhatsAppSender(BaseWhatsAppSender):
     def send_text(self, to: str, message: str) -> bool:
         try:
             formatted_to = self._format_number(to)
-            self.client.messages.create(from_=self.from_number, to=formatted_to, body=message)
-            logger.info("Sent Twilio WhatsApp message to %s", formatted_to)
+            logger.debug("Sending Twilio message to %s (from %s): %s", 
+                        formatted_to, self.from_number, message[:100])
+            result = self.client.messages.create(from_=self.from_number, to=formatted_to, body=message)
+            logger.info("Sent Twilio WhatsApp message to %s (SID: %s, Status: %s)", 
+                       formatted_to, result.sid, result.status)
             return True
         except TwilioException as exc:  # pragma: no cover - network errors
-            logger.error("Error sending Twilio WhatsApp message: %s", exc)
+            logger.error("Error sending Twilio WhatsApp message to %s: %s", to, exc, exc_info=True)
             return False
 
     def send_document(self, to: str, document_path: str, caption: Optional[str] = None) -> bool:
