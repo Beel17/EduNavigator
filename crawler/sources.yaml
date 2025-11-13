@@ -6,16 +6,21 @@ sources:
     type: html
     schedule_cron: "0 6 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [policy, data-protection] # e.g., GAID, guidance
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
     # ref: :contentReference[oaicite:0]{index=0}
 
-  - name: NDPC Site (category: news)
+  - name: "NDPC Site (category: news)"
     url: https://ndpc.gov.ng/category/news/
     type: html
     schedule_cron: "30 6 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
     # ref: :contentReference[oaicite:1]{index=1}
 
   - name: SEC Nigeria Circulars
@@ -23,8 +28,10 @@ sources:
     type: html
     schedule_cron: "0 7 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [policy, finance-education, governance]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
     # ref: :contentReference[oaicite:2]{index=2}
 
   - name: CBN News RSS
@@ -32,8 +39,10 @@ sources:
     type: rss
     schedule_cron: "0 7 * * *"
     active: true
-    selectors: { title: title, content: description, date: pubDate }
-    tags: [essay-competitions, notices]
+    selectors:
+      title: "title"
+      content: "description"
+      date: "pubDate"
     # ref: :contentReference[oaicite:3]{index=3}
 
   - name: CBN Economic & Financial Review
@@ -41,8 +50,10 @@ sources:
     type: html
     schedule_cron: "15 7 * * *"
     active: true
-    selectors: { title: h1, content: main, date: .article-date }
-    tags: [research, policy]
+    selectors:
+      title: "h1"
+      content: "main"
+      date: ".article-date"
     # ref: :contentReference[oaicite:4]{index=4}
 
   # ——— TETFund / National Research ———
@@ -51,8 +62,9 @@ sources:
     type: html
     schedule_cron: "0 8 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [nrf, interventions]
+    selectors:
+      title: "h1"
+      content: "main"
     # ref: :contentReference[oaicite:5]{index=5}
 
   - name: TETFund NRF Portal (calls/resources)
@@ -60,8 +72,9 @@ sources:
     type: html
     schedule_cron: "30 8 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [nrf, application]
+    selectors:
+      title: "h1"
+      content: "main"
     # ref: :contentReference[oaicite:6]{index=6}
 
   - name: TETFund NRF Guidelines (static)
@@ -69,8 +82,10 @@ sources:
     type: html
     schedule_cron: "0 13 1 * *"   # monthly
     active: true
-    selectors: { title: h1, content: article }
-    tags: [guidelines]
+    selectors:
+      title: "h1"
+      content: "article"
+
     # ref: :contentReference[oaicite:7]{index=7}
 
   # ——— Federal Ministry of Education / Scholarships ———
@@ -79,8 +94,11 @@ sources:
     type: html
     schedule_cron: "0 9 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [scholarship, bursary]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:8]{index=8}
 
   - name: FME Commonwealth Scholarships (updates/PDF)
@@ -88,8 +106,11 @@ sources:
     type: html
     schedule_cron: "30 9 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [scholarship]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:9]{index=9}
 
   # ——— NITDA / Digital Economy ———
@@ -98,8 +119,11 @@ sources:
     type: html
     schedule_cron: "0 10 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [programmes, capacity, announcements]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:10]{index=10}
 
   - name: NITDA 3MTT Programme
@@ -107,8 +131,10 @@ sources:
     type: html
     schedule_cron: "15 10 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [capacity-building]
+    selectors:
+      title: "h1"
+      content: "main"
+
     # ref: :contentReference[oaicite:11]{index=11}
 
   - name: NITDA NCAIR Scholarships (category)
@@ -116,8 +142,11 @@ sources:
     type: html
     schedule_cron: "30 10 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [scholarship, AI]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:12]{index=12}
 
   # ——— Health/Research Institutes ———
@@ -126,8 +155,11 @@ sources:
     type: html
     schedule_cron: "0 11 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [health, grants]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:13]{index=13}
 
   # ——— University Research Offices (sample; add your own) ———
@@ -136,8 +168,11 @@ sources:
     type: html
     schedule_cron: "0 12 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [calls, internal, external]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:14]{index=14}
 
   - name: UNILAG Grant Digest (news post)
@@ -145,7 +180,10 @@ sources:
     type: html
     schedule_cron: "30 12 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
     # ref: :contentReference[oaicite:15]{index=15}
 
   - name: UI Research Management Office
@@ -153,7 +191,10 @@ sources:
     type: html
     schedule_cron: "0 13 * * *"
     active: true
-    selectors: { title: h1, content: main, date: time }
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
     # ref: :contentReference[oaicite:16]{index=16}
 
   # ——— Pan-African / Regional Calls ———
@@ -162,8 +203,11 @@ sources:
     type: html
     schedule_cron: "0 14 * * *"
     active: true
-    selectors: { title: h1, content: main, date: time }
-    tags: [AI, grants]
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
     # ref: :contentReference[oaicite:17]{index=17}
 
   - name: IDRC AI4D Calls (official)
@@ -171,8 +215,11 @@ sources:
     type: html
     schedule_cron: "15 14 * * *"
     active: true
-    selectors: { title: h1, content: main, date: time }
-    tags: [AI, research]
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
     # ref: :contentReference[oaicite:18]{index=18}
 
   - name: African Academy of Sciences – Funding
@@ -180,8 +227,10 @@ sources:
     type: html
     schedule_cron: "30 14 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [pan-africa, research]
+    selectors:
+      title: "h1"
+      content: "main"
+
     # ref: :contentReference[oaicite:19]{index=19}
 
   - name: TWAS – Opportunities
@@ -189,8 +238,10 @@ sources:
     type: html
     schedule_cron: "45 14 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [global, research, developing-countries]
+    selectors:
+      title: "h1"
+      content: "main"
+
     # ref: :contentReference[oaicite:20]{index=20}
 
   # ——— Energy sector scholarships (popular in NG) ———
@@ -199,8 +250,10 @@ sources:
     type: html
     schedule_cron: "0 15 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [scholarship, oil-gas]
+    selectors:
+      title: "h1"
+      content: "main"
+
     # ref: :contentReference[oaicite:21]{index=21}
 
   - name: PTDF News (announcements)
@@ -208,7 +261,10 @@ sources:
     type: html
     schedule_cron: "15 15 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
     # ref: :contentReference[oaicite:22]{index=22}
 
   - name: NNPC–SEPLAT Undergraduate Scholarship
@@ -216,8 +272,11 @@ sources:
     type: html
     schedule_cron: "30 15 * * *"
     active: true
-    selectors: { title: h1, content: article, date: time }
-    tags: [scholarship]
+    selectors:
+      title: "h1"
+      content: "article"
+      date: "time"
+
     # ref: :contentReference[oaicite:23]{index=23}
 
   - name: NNPC–TotalEnergies International Masters (news)
@@ -225,7 +284,10 @@ sources:
     type: html
     schedule_cron: "45 15 * * *"
     active: true
-    selectors: { title: h1, content: main, date: time }
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
     # ref: :contentReference[oaicite:24]{index=24}
 
   # ——— Major international programmes (Nigeria-eligible) ———
@@ -234,8 +296,11 @@ sources:
     type: html
     schedule_cron: "0 16 * * *"
     active: true
-    selectors: { title: h1, content: main, date: time }
-    tags: [scholarship, UK]
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
     # ref: :contentReference[oaicite:25]{index=25}
 
   - name: Chevening (Nigeria page)
@@ -243,8 +308,10 @@ sources:
     type: html
     schedule_cron: "15 16 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [scholarship, UK]
+    selectors:
+      title: "h1"
+      content: "main"
+
     # ref: :contentReference[oaicite:26]{index=26}
 
   - name: Erasmus+ – Opportunities for Individuals
@@ -252,6 +319,8 @@ sources:
     type: html
     schedule_cron: "30 16 * * *"
     active: true
-    selectors: { title: h1, content: main }
-    tags: [scholarship, mobility, EU]
+    selectors:
+      title: "h1"
+      content: "main"
+
     # ref: :contentReference[oaicite:27]{index=27}
