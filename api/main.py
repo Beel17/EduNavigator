@@ -563,6 +563,84 @@ async def run_cron(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/reindex")
+async def reindex_rag_store(db: Session = Depends(get_db)):
+    """
+    Reindex all documents from the database into ChromaDB.
+    This is useful when embeddings failed during initial ingest.
+    """
+    try:
+        from rag.store import RAGStore
+        from rag.chunker import chunk_text
+        from database.models import Document
+        
+        logger.info("Starting RAG store reindex...")
+        
+        # Load all documents with non-empty raw_text
+        documents = db.query(Document).filter(
+            Document.raw_text.isnot(None),
+            Document.raw_text != ""
+        ).all()
+        
+        logger.info(f"Found {len(documents)} documents to reindex")
+        
+        if not documents:
+            return {
+                "status": "success",
+                "message": "No documents to reindex",
+                "documents_processed": 0,
+                "chunks_added": 0
+            }
+        
+        # Initialize RAG store
+        rag_store = RAGStore()
+        
+        total_chunks = 0
+        processed = 0
+        errors = 0
+        
+        for doc in documents:
+            try:
+                # Chunk the document
+                chunks = chunk_text(
+                    text=doc.raw_text,
+                    url=doc.url,
+                    title=doc.title
+                )
+                
+                if chunks:
+                    # Add to RAG store (duplicates will be handled by ChromaDB)
+                    success = rag_store.add_documents(chunks)
+                    if success:
+                        total_chunks += len(chunks)
+                        processed += 1
+                        logger.info(f"Reindexed document {doc.id}: {doc.url} ({len(chunks)} chunks)")
+                    else:
+                        errors += 1
+                        logger.warning(f"Failed to add chunks for document {doc.id}: {doc.url}")
+                else:
+                    logger.warning(f"No chunks generated for document {doc.id}: {doc.url}")
+                    errors += 1
+                    
+            except Exception as e:
+                errors += 1
+                logger.error(f"Error reindexing document {doc.id} ({doc.url}): {e}")
+                continue
+        
+        logger.info(f"Reindex complete: {processed} documents processed, {total_chunks} chunks added, {errors} errors")
+        
+        return {
+            "status": "success",
+            "documents_processed": processed,
+            "chunks_added": total_chunks,
+            "errors": errors,
+            "total_documents": len(documents)
+        }
+    except Exception as e:
+        logger.error(f"Error during reindex: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=settings.api_host, port=settings.api_port)

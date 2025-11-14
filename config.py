@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     # RAG Configuration
     rag_vector_store: str = os.getenv("RAG_VECTOR_STORE", "chroma")
     chroma_persist_dir: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
+    chromadb_disable_telemetry: bool = os.getenv("CHROMADB_DISABLE_TELEMETRY", "true").lower() == "true"
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "sentence_transformers")
     embedding_service_url: str = os.getenv("EMBEDDING_SERVICE_URL", "")

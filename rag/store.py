@@ -104,9 +104,11 @@ class RAGStore:
     def __init__(self):
         """Initialize RAG store."""
         self.embedding_client = EmbeddingClient()
+        # Disable telemetry if configured
+        anonymized_telemetry = not settings.chromadb_disable_telemetry
         self.chroma_client = chromadb.PersistentClient(
             path=settings.chroma_persist_dir,
-            settings=Settings(anonymized_telemetry=False)
+            settings=Settings(anonymized_telemetry=anonymized_telemetry)
         )
         self.collection = self.chroma_client.get_or_create_collection(
             name="nigerian_grants",
