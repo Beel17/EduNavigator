@@ -1,4 +1,5 @@
-# Nigerian Grants/Scholarships/Policies Sources (curated, live endpoints)
+# Global Grants/Scholarships/Policies Sources (curated, live endpoints)
+# Includes Nigerian sources and major international opportunities
 sources:
   # ——— Core Nigerian Policy/Regulators ———
   - name: NDPC News
@@ -324,3 +325,575 @@ sources:
       content: "main"
 
     # ref: :contentReference[oaicite:27]{index=27}
+
+  # ========== GLOBAL SCHOLARSHIP & GRANT SOURCES ==========
+  
+  # ——— Global Scholarship Databases & Aggregators ———
+  - name: Scholarships.com
+    url: https://www.scholarships.com/financial-aid/college-scholarships/scholarships-by-type
+    type: html
+    schedule_cron: "0 17 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Fastweb Scholarships
+    url: https://www.fastweb.com/scholarships
+    type: html
+    schedule_cron: "15 17 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: ScholarshipPortal
+    url: https://www.scholarshipportal.com/scholarships
+    type: html
+    schedule_cron: "30 17 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Studyportals Scholarships
+    url: https://www.studyportals.com/scholarships/
+    type: html
+    schedule_cron: "45 17 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: International Scholarships
+    url: https://www.internationalscholarships.com/
+    type: html
+    schedule_cron: "0 18 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— US Government Programs ———
+  - name: Fulbright Program
+    url: https://fulbrightprogram.org/
+    type: html
+    schedule_cron: "0 19 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Fulbright Foreign Student Program
+    url: https://foreign.fulbrightonline.org/
+    type: html
+    schedule_cron: "15 19 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: USAID Funding Opportunities
+    url: https://www.usaid.gov/work-usaid/funding-opportunities
+    type: html
+    schedule_cron: "30 19 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Grants.gov RSS
+    url: https://www.grants.gov/connect/rss-feeds
+    type: rss
+    schedule_cron: "45 19 * * *"
+    active: true
+    selectors:
+      title: "title"
+      content: "description"
+      date: "pubDate"
+
+  - name: NSF Funding Opportunities
+    url: https://www.nsf.gov/funding/
+    type: html
+    schedule_cron: "0 20 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: NIH Funding Opportunities
+    url: https://grants.nih.gov/funding/searchguide/index.html
+    type: html
+    schedule_cron: "15 20 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Department of Education Grants
+    url: https://www2.ed.gov/fund/grants-apply.html
+    type: html
+    schedule_cron: "30 20 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— UK Government Programs ———
+  - name: Chevening Scholarships (Global)
+    url: https://www.chevening.org/scholarships/
+    type: html
+    schedule_cron: "0 21 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Commonwealth Scholarships (Global)
+    url: https://cscuk.fcdo.gov.uk/scholarships/
+    type: html
+    schedule_cron: "15 21 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Rhodes Scholarships
+    url: https://www.rhodeshouse.ox.ac.uk/scholarships/
+    type: html
+    schedule_cron: "30 21 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: UK Research and Innovation
+    url: https://www.ukri.org/opportunity/
+    type: html
+    schedule_cron: "45 21 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: British Council Scholarships
+    url: https://www.britishcouncil.org/study-work-abroad/in-uk/scholarship
+    type: html
+    schedule_cron: "0 22 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— European Programs ———
+  - name: DAAD Scholarships
+    url: https://www.daad.de/en/study-and-research-in-germany/scholarships/
+    type: html
+    schedule_cron: "0 23 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Erasmus Mundus Scholarships
+    url: https://www.em-a.eu/
+    type: html
+    schedule_cron: "15 23 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: European Research Council
+    url: https://erc.europa.eu/funding
+    type: html
+    schedule_cron: "30 23 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Horizon Europe Funding
+    url: https://ec.europa.eu/info/research-and-innovation/funding/funding-opportunities/funding-programmes-and-open-calls/horizon-europe_en
+    type: html
+    schedule_cron: "45 23 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Eiffel Excellence Scholarship (France)
+    url: https://www.campusfrance.org/en/eiffel-scholarship-program-of-excellence
+    type: html
+    schedule_cron: "0 0 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Swedish Institute Scholarships
+    url: https://si.se/en/apply/scholarships/
+    type: html
+    schedule_cron: "15 0 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Netherlands Scholarships
+    url: https://www.studyinnl.nl/finances/scholarships
+    type: html
+    schedule_cron: "30 0 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— Asian Programs ———
+  - name: MEXT Scholarships (Japan)
+    url: https://www.studyinjapan.go.jp/en/planning/scholarship/
+    type: html
+    schedule_cron: "0 1 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Chinese Government Scholarships
+    url: https://www.campuschina.org/content/details3_70776.html
+    type: html
+    schedule_cron: "15 1 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Korean Government Scholarships
+    url: https://www.studyinkorea.go.kr/en/sub/gks/allnew_scholarship.do
+    type: html
+    schedule_cron: "30 1 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Australia Awards Scholarships
+    url: https://www.dfat.gov.au/people-to-people/australia-awards/Pages/australia-awards-scholarships
+    type: html
+    schedule_cron: "45 1 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: New Zealand Scholarships
+    url: https://www.mfat.govt.nz/en/aid-and-development/scholarships/
+    type: html
+    schedule_cron: "0 2 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— International Research Funding ———
+  - name: Wellcome Trust Funding
+    url: https://wellcome.org/grant-funding
+    type: html
+    schedule_cron: "0 3 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: European Molecular Biology Organization
+    url: https://www.embo.org/funding/
+    type: html
+    schedule_cron: "15 3 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Human Frontier Science Program
+    url: https://www.hfsp.org/funding
+    type: html
+    schedule_cron: "30 3 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: International Foundation for Science
+    url: https://ifs.se/en/
+    type: html
+    schedule_cron: "45 3 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— Major Foundations ———
+  - name: Gates Foundation Grants
+    url: https://www.gatesfoundation.org/ideas/funding-opportunities
+    type: html
+    schedule_cron: "0 4 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Gates Cambridge Scholarships
+    url: https://www.gatescambridge.org/
+    type: html
+    schedule_cron: "15 4 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Ford Foundation Grants
+    url: https://www.fordfoundation.org/work/our-grants/
+    type: html
+    schedule_cron: "30 4 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Rockefeller Foundation
+    url: https://www.rockefellerfoundation.org/grants-opportunities/
+    type: html
+    schedule_cron: "45 4 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Open Society Foundations
+    url: https://www.opensocietyfoundations.org/grants
+    type: html
+    schedule_cron: "0 5 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Mastercard Foundation Scholars Program
+    url: https://mastercardfdn.org/all/scholars/
+    type: html
+    schedule_cron: "15 5 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— International Organizations ———
+  - name: World Bank Scholarships
+    url: https://www.worldbank.org/en/programs/scholarships
+    type: html
+    schedule_cron: "0 6 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: UN Scholarships and Fellowships
+    url: https://www.un.org/en/academic-impact/scholarships
+    type: html
+    schedule_cron: "15 6 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: UNESCO Fellowships
+    url: https://www.unesco.org/en/fellowships
+    type: html
+    schedule_cron: "30 6 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: WHO Funding Opportunities
+    url: https://www.who.int/about/funding
+    type: html
+    schedule_cron: "45 6 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: IDRC Funding Opportunities
+    url: https://idrc.ca/en/funding
+    type: html
+    schedule_cron: "0 7 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Asian Development Bank Scholarships
+    url: https://www.adb.org/work-with-us/careers/japan-scholarship-program
+    type: html
+    schedule_cron: "15 7 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— University Scholarship Portals ———
+  - name: Harvard University Financial Aid
+    url: https://college.harvard.edu/financial-aid
+    type: html
+    schedule_cron: "0 8 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Stanford University Scholarships
+    url: https://financialaid.stanford.edu/
+    type: html
+    schedule_cron: "15 8 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: MIT Financial Aid
+    url: https://sfs.mit.edu/
+    type: html
+    schedule_cron: "30 8 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Oxford University Scholarships
+    url: https://www.ox.ac.uk/admissions/graduate/fees-and-funding
+    type: html
+    schedule_cron: "45 8 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Cambridge University Funding
+    url: https://www.cambridge.org/apply/funding
+    type: html
+    schedule_cron: "0 9 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  # ——— Additional Global Opportunities ———
+  - name: Rotary Foundation Global Grants
+    url: https://www.rotary.org/en/our-programs/scholarships
+    type: html
+    schedule_cron: "15 9 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Soros Foundation Scholarships
+    url: https://www.opensocietyfoundations.org/grants
+    type: html
+    schedule_cron: "30 9 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Aga Khan Foundation Scholarships
+    url: https://www.akdn.org/our-agencies/aga-khan-foundation/education
+    type: html
+    schedule_cron: "45 9 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Google Scholarships
+    url: https://edu.google.com/scholarships/
+    type: html
+    schedule_cron: "0 10 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Microsoft Scholarships
+    url: https://www.microsoft.com/en-us/research/academic-program/microsoft-research-phd-scholarship-program/
+    type: html
+    schedule_cron: "15 10 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"
+
+  - name: Facebook Fellowship Program
+    url: https://research.facebook.com/fellowship/
+    type: html
+    schedule_cron: "30 10 * * *"
+    active: true
+    selectors:
+      title: "h1"
+      content: "main"
+      date: "time"

@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from database.models import Source, Document, DocVersion, Change, Opportunity
+from database.models import Source, Document, DocVersion, Change, Opportunity, Subscriber
 from database.session import SessionLocal
 from tools.schemas import CrawlOut
 from dedupe.dedupe import Deduper
@@ -11,6 +11,9 @@ from rag.store import RAGStore
 from rag.chunker import chunk_text
 from agents.change_detector import ChangeDetector
 from agents.opportunity_extractor import OpportunityExtractor
+from agents.proposal_writer import ProposalWriter
+from tools.whatsapp import get_whatsapp_sender, BaseWhatsAppSender
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,8 @@ class Ingester:
         self.rag_store = RAGStore()
         self.change_detector = ChangeDetector()
         self.opportunity_extractor = OpportunityExtractor()
+        self.proposal_writer = ProposalWriter()
+        self.whatsapp_sender: BaseWhatsAppSender = get_whatsapp_sender()
     
     def ingest(self, source_id: int, crawl_results: List[CrawlOut]) -> int:
         """
@@ -147,6 +152,14 @@ class Ingester:
                             score=0.0  # Can be updated by ranking
                         )
                         self.db.add(opportunity)
+                        self.db.flush()  # Flush to get opportunity.id
+                        
+                        # Automatically generate and send proposal to active subscribers
+                        if settings.enable_auto_proposal_sending:
+                            try:
+                                self._send_proposal_to_subscribers(opportunity, doc)
+                            except Exception as e:
+                                logger.error(f"Error sending proposal for opportunity {opp.title}: {e}", exc_info=True)
                 
                 # Chunk and add to RAG store
                 if crawl_result.raw_text:
@@ -174,4 +187,83 @@ class Ingester:
             raise
         
         return ingested_count
+    
+    def _send_proposal_to_subscribers(self, opportunity: Opportunity, document: Document):
+        """
+        Generate and send proposal text to all active subscribers.
+        
+        Args:
+            opportunity: The opportunity for which to generate proposal
+            document: The source document
+        """
+        try:
+            # Get active subscribers
+            subscribers = self.db.query(Subscriber).filter(
+                Subscriber.active == True,
+                Subscriber.channel == "whatsapp"
+            ).all()
+            
+            if not subscribers:
+                logger.debug("No active subscribers to send proposal to")
+                return
+            
+            # Get RAG chunks for the opportunity
+            chunks = self.rag_store.query(opportunity.title, top_k=5)
+            
+            # Fallback: if no RAG chunks found, create chunks from document text
+            if not chunks and document.raw_text:
+                logger.info(f"No RAG chunks found, creating chunks from document text for: {opportunity.title}")
+                chunks_from_doc = chunk_text(
+                    text=document.raw_text,
+                    url=document.url,
+                    title=document.title
+                )
+                # Convert chunk format to match RAG query results
+                chunks = [
+                    {
+                        "text": chunk.get("text", ""),
+                        "url": chunk.get("url", document.url),
+                        "title": chunk.get("title", document.title),
+                        "heading": chunk.get("heading", ""),
+                        "metadata": {}
+                    }
+                    for chunk in chunks_from_doc[:5]  # Limit to top 5
+                ]
+            
+            if not chunks:
+                logger.warning(f"No chunks available for proposal generation: {opportunity.title}")
+                return
+            
+            # Generate proposal text
+            deadline_str = opportunity.deadline.isoformat() if opportunity.deadline else None
+            proposal_text = self.proposal_writer.generate_proposal_text(
+                opportunity_title=opportunity.title,
+                agency=opportunity.agency,
+                deadline=deadline_str,
+                amount=opportunity.amount,
+                chunks=chunks
+            )
+            
+            # Send to all active subscribers
+            sent_count = 0
+            for subscriber in subscribers:
+                try:
+                    success = self.whatsapp_sender.send_proposal_text(
+                        to=subscriber.handle,
+                        proposal_text=proposal_text,
+                        opportunity_title=opportunity.title
+                    )
+                    if success:
+                        sent_count += 1
+                        logger.info(f"Sent proposal for '{opportunity.title}' to subscriber {subscriber.handle}")
+                    else:
+                        logger.warning(f"Failed to send proposal to subscriber {subscriber.handle}")
+                except Exception as e:
+                    logger.error(f"Error sending proposal to subscriber {subscriber.handle}: {e}", exc_info=True)
+            
+            logger.info(f"Sent proposal for '{opportunity.title}' to {sent_count}/{len(subscribers)} subscribers")
+            
+        except Exception as e:
+            logger.error(f"Error in _send_proposal_to_subscribers: {e}", exc_info=True)
+            raise
 

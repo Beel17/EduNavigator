@@ -1,5 +1,6 @@
 """Proposal writer agent."""
 import logging
+import re
 from typing import List, Dict, Optional
 from pathlib import Path
 from agents.llm_client import LLMClient
@@ -117,4 +118,93 @@ Write a comprehensive one-page proposal following the specified format."""
         except Exception as e:
             logger.error(f"Error generating proposal PDF: {e}")
             raise
+    
+    def generate_proposal_text(
+        self,
+        opportunity_title: str,
+        agency: str,
+        deadline: Optional[str],
+        amount: Optional[str],
+        chunks: List[Dict[str, str]]
+    ) -> str:
+        """
+        Generate proposal as plain text (formatted for WhatsApp).
+        
+        Args:
+            opportunity_title: Opportunity title
+            agency: Agency name
+            deadline: Deadline (optional)
+            amount: Amount (optional)
+            chunks: Relevant RAG chunks
+        
+        Returns:
+            Proposal as plain text
+        """
+        try:
+            # Write proposal markdown
+            proposal_markdown = self.write_proposal(
+                opportunity_title,
+                agency,
+                deadline,
+                amount,
+                chunks
+            )
+            
+            # Convert markdown to plain text for WhatsApp
+            text = self._markdown_to_text(proposal_markdown)
+            
+            # Add opportunity header
+            header = f"📋 *Proposal for: {opportunity_title}*\n"
+            header += f"Agency: {agency}\n"
+            if deadline:
+                header += f"Deadline: {deadline}\n"
+            if amount:
+                header += f"Amount: {amount}\n"
+            header += "\n" + "="*50 + "\n\n"
+            
+            return header + text
+        except Exception as e:
+            logger.error(f"Error generating proposal text: {e}")
+            raise
+    
+    @staticmethod
+    def _markdown_to_text(markdown_content: str) -> str:
+        """
+        Convert markdown to plain text suitable for WhatsApp.
+        
+        Args:
+            markdown_content: Markdown text
+        
+        Returns:
+            Plain text
+        """
+        text = markdown_content
+        
+        # Remove markdown headers (convert to bold text)
+        text = re.sub(r'^#+\s+(.+)$', r'*\1*', text, flags=re.MULTILINE)
+        
+        # Remove markdown bold/italic markers (keep the text)
+        text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
+        text = re.sub(r'\*([^*]+)\*', r'\1', text)
+        text = re.sub(r'__([^_]+)__', r'\1', text)
+        text = re.sub(r'_([^_]+)_', r'\1', text)
+        
+        # Remove markdown links but keep the text
+        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+        
+        # Remove markdown code blocks
+        text = re.sub(r'```[^`]*```', '', text, flags=re.DOTALL)
+        text = re.sub(r'`([^`]+)`', r'\1', text)
+        
+        # Remove markdown list markers (convert to simple bullets)
+        text = re.sub(r'^\s*[-*+]\s+', '• ', text, flags=re.MULTILINE)
+        text = re.sub(r'^\s*\d+\.\s+', '', text, flags=re.MULTILINE)
+        
+        # Clean up multiple blank lines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Trim whitespace
+        text = text.strip()
+        
+        return text
 

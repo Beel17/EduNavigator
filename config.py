@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     enable_content_filter: bool = os.getenv("ENABLE_CONTENT_FILTER", "true").lower() == "true"
     content_filter_model: str = os.getenv("CONTENT_FILTER_MODEL", "unitary/toxic-bert")
     
+    # Auto Proposal Sending
+    enable_auto_proposal_sending: bool = os.getenv("ENABLE_AUTO_PROPOSAL_SENDING", "true").lower() == "true"
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -44,6 +44,60 @@ class BaseWhatsAppSender:
         message = "\n".join(message_lines)
         logger.info("Digest message content (%d chars): %s", len(message), message[:200])
         return self.send_text(to, message)
+    
+    def send_proposal_text(self, to: str, proposal_text: str, opportunity_title: str) -> bool:
+        """
+        Send proposal as text message.
+        
+        Args:
+            to: Recipient WhatsApp number
+            proposal_text: Proposal text content
+            opportunity_title: Opportunity title for logging
+        
+        Returns:
+            Success status
+        """
+        # WhatsApp has a message length limit (4096 characters)
+        # Split long proposals into multiple messages if needed
+        max_length = 4000  # Leave some buffer
+        
+        if len(proposal_text) <= max_length:
+            return self.send_text(to, proposal_text)
+        
+        # Split into chunks
+        chunks = []
+        lines = proposal_text.split('\n')
+        current_chunk = []
+        current_length = 0
+        
+        for line in lines:
+            line_length = len(line) + 1  # +1 for newline
+            if current_length + line_length > max_length and current_chunk:
+                chunks.append('\n'.join(current_chunk))
+                current_chunk = [line]
+                current_length = line_length
+            else:
+                current_chunk.append(line)
+                current_length += line_length
+        
+        if current_chunk:
+            chunks.append('\n'.join(current_chunk))
+        
+        # Send all chunks
+        success = True
+        for i, chunk in enumerate(chunks, 1):
+            if len(chunks) > 1:
+                header = f"📄 *Proposal Part {i}/{len(chunks)}*\n\n"
+                chunk = header + chunk
+            
+            if not self.send_text(to, chunk):
+                success = False
+                logger.warning(f"Failed to send proposal chunk {i}/{len(chunks)} to {to}")
+        
+        if success:
+            logger.info(f"Sent proposal text for '{opportunity_title}' to {to} ({len(chunks)} parts)")
+        
+        return success
 
 
 class MetaWhatsAppSender(BaseWhatsAppSender):
