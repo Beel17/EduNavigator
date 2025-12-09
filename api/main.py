@@ -1,5 +1,6 @@
 """FastAPI application."""
 import logging
+import os
 from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -276,10 +277,62 @@ async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
 
         from twilio.request_validator import RequestValidator  # type: ignore
 
+        # Construct the full URL for signature validation
+        # Twilio expects the full URL including scheme and host
+        url = str(request.url)
+        # Remove query parameters if present (Twilio signature doesn't include them)
+        if '?' in url:
+            url = url.split('?')[0]
+        
         validator = RequestValidator(settings.twilio_auth_token)
-        if not validator.validate(str(request.url), form_dict, signature):
-            logger.warning("Invalid Twilio signature")
-            raise HTTPException(status_code=403, detail="Invalid Twilio signature")
+        
+        # Try validation with different URL formats
+        # Twilio signature validation can be sensitive to URL format
+        is_valid = False
+        
+        # Try 1: URL without query parameters (most common)
+        try:
+            is_valid = validator.validate(url, form_dict, signature)
+            if is_valid:
+                logger.debug("Twilio signature validated with URL (no query)")
+        except Exception as e:
+            logger.debug("Validation attempt 1 failed: %s", e)
+        
+        # Try 2: Full URL with query parameters
+        if not is_valid and request.url.query:
+            try:
+                url_with_query = str(request.url)
+                is_valid = validator.validate(url_with_query, form_dict, signature)
+                if is_valid:
+                    logger.debug("Twilio signature validated with full URL (with query)")
+            except Exception as e:
+                logger.debug("Validation attempt 2 failed: %s", e)
+        
+        # Try 3: URL with just path (for some proxy setups)
+        if not is_valid:
+            try:
+                path_only = request.url.path
+                is_valid = validator.validate(path_only, form_dict, signature)
+                if is_valid:
+                    logger.debug("Twilio signature validated with path only")
+            except Exception as e:
+                logger.debug("Validation attempt 3 failed: %s", e)
+        
+        if not is_valid:
+            logger.warning(
+                "Invalid Twilio signature. URL: %s, Has query: %s, Signature present: %s, "
+                "Auth token configured: %s",
+                url, bool(request.url.query), bool(signature), bool(settings.twilio_auth_token)
+            )
+            
+            # For development: allow bypassing signature validation
+            # Set ENABLE_TWILIO_SIGNATURE_VALIDATION=false in .env to disable
+            if settings.app_env == "development" and not os.getenv("ENABLE_TWILIO_SIGNATURE_VALIDATION", "true").lower() == "true":
+                logger.warning("Bypassing Twilio signature validation in development mode")
+                is_valid = True
+            
+            if not is_valid:
+                raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
         # Extract message content
         message_text = form_dict.get("Body", "")
