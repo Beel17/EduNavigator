@@ -355,7 +355,7 @@ async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
 async def handle_digest_request(from_number: str, db: Session):
     """Handle digest request."""
     try:
-        # Get top opportunities - include those with future deadlines or no deadline
+        # Get most recent opportunities - include those with future deadlines or no deadline
         from sqlalchemy import or_
         now = datetime.utcnow()
         
@@ -365,8 +365,7 @@ async def handle_digest_request(from_number: str, db: Session):
                 Opportunity.deadline.is_(None)
             )
         ).order_by(
-            Opportunity.score.desc(),
-            Opportunity.deadline.asc().nulls_last()
+            Opportunity.created_at.desc()  # Most recent first
         ).limit(3).all()
         
         logger.info("Found %d opportunities for digest to %s", len(opportunities), from_number)
@@ -447,8 +446,7 @@ async def handle_proposal_request(from_number: str, item_num: int, db: Session):
                 Opportunity.deadline.is_(None)
             )
         ).order_by(
-            Opportunity.score.desc(),
-            Opportunity.deadline.asc().nulls_last()
+            Opportunity.created_at.desc()  # Most recent first (matches digest)
         ).limit(3).all()
         
         if item_num < 1 or item_num > len(opportunities):

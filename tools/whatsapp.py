@@ -57,9 +57,11 @@ class BaseWhatsAppSender:
         Returns:
             Success status
         """
-        # WhatsApp has a message length limit (4096 characters)
-        # Split long proposals into multiple messages if needed
-        max_length = 4000  # Leave some buffer
+        # WhatsApp message length limits:
+        # - Meta: 4096 characters
+        # - Twilio: 1600 characters (free tier limitation)
+        # Use Twilio's limit to be safe for both providers
+        max_length = 1500  # Leave buffer for Twilio's 1600 char limit
         
         if len(proposal_text) <= max_length:
             return self.send_text(to, proposal_text)
