@@ -44,7 +44,7 @@ class BaseWhatsAppSender:
         message = "\n".join(message_lines)
         logger.info("Digest message content (%d chars): %s", len(message), message[:200])
         return self.send_text(to, message)
-    
+
     def send_proposal_text(self, to: str, proposal_text: str, opportunity_title: str) -> bool:
         """
         Send proposal as text message.

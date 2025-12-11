@@ -283,7 +283,7 @@ async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
         # Remove query parameters if present (Twilio signature doesn't include them)
         if '?' in url:
             url = url.split('?')[0]
-        
+
         validator = RequestValidator(settings.twilio_auth_token)
         
         # Try validation with different URL formats
@@ -332,7 +332,7 @@ async def handle_twilio_webhook(request: Request, db: Session) -> JSONResponse:
                 is_valid = True
             
             if not is_valid:
-                raise HTTPException(status_code=403, detail="Invalid Twilio signature")
+            raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
         # Extract message content
         message_text = form_dict.get("Body", "")
