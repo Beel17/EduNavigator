@@ -465,39 +465,71 @@ async def handle_proposal_request(from_number: str, item_num: int, db: Session):
             Proposal.opportunity_id == opportunity.id
         ).order_by(Proposal.created_at.desc()).first()
         
-        # Generate proposal if doesn't exist
-        if not proposal:
-            # Get RAG chunks for opportunity
-            from rag.store import RAGStore
-            rag_store = RAGStore()
-            chunks = rag_store.query(opportunity.title, top_k=5)
-            
-            # Generate PDF
-            pdf_path = proposal_writer.generate_proposal_pdf(
+        # Check if using Twilio (which can't send PDFs)
+        is_twilio = (settings.whatsapp_provider or "meta").lower() == "twilio"
+        
+        # Get RAG chunks for opportunity
+        from rag.store import RAGStore
+        rag_store = RAGStore()
+        chunks = rag_store.query(opportunity.title, top_k=5)
+        
+        if is_twilio:
+            # For Twilio: Generate and send text proposal directly
+            deadline_str = opportunity.deadline.isoformat() if opportunity.deadline else None
+            proposal_text = proposal_writer.generate_proposal_text(
                 opportunity_title=opportunity.title,
                 agency=opportunity.agency,
-                deadline=opportunity.deadline.isoformat() if opportunity.deadline else None,
+                deadline=deadline_str,
                 amount=opportunity.amount,
                 chunks=chunks
             )
             
-            # Save proposal
-            proposal = Proposal(
-                opportunity_id=opportunity.id,
-                pdf_path=pdf_path,
-                summary=opportunity.title
+            # Send text proposal
+            success = whatsapp_sender.send_proposal_text(
+                to=from_number,
+                proposal_text=proposal_text,
+                opportunity_title=opportunity.title
             )
-            db.add(proposal)
-            db.commit()
+            
+            if not success:
+                whatsapp_sender.send_text(
+                    from_number,
+                    f"Sorry, there was an error sending the proposal for: {opportunity.title}"
+                )
         else:
-            pdf_path = proposal.pdf_path
-        
-        # Send PDF
-        whatsapp_sender.send_document(
-            from_number,
-            pdf_path,
-            caption=f"Proposal for: {opportunity.title}"
-        )
+            # For Meta: Generate PDF and send document
+            # Check if proposal exists
+            proposal = db.query(Proposal).filter(
+                Proposal.opportunity_id == opportunity.id
+            ).order_by(Proposal.created_at.desc()).first()
+            
+            if not proposal:
+                # Generate PDF
+                pdf_path = proposal_writer.generate_proposal_pdf(
+                    opportunity_title=opportunity.title,
+                    agency=opportunity.agency,
+                    deadline=opportunity.deadline.isoformat() if opportunity.deadline else None,
+                    amount=opportunity.amount,
+                    chunks=chunks
+                )
+                
+                # Save proposal
+                proposal = Proposal(
+                    opportunity_id=opportunity.id,
+                    pdf_path=pdf_path,
+                    summary=opportunity.title
+                )
+                db.add(proposal)
+                db.commit()
+            else:
+                pdf_path = proposal.pdf_path
+            
+            # Send PDF
+            whatsapp_sender.send_document(
+                from_number,
+                pdf_path,
+                caption=f"Proposal for: {opportunity.title}"
+            )
         
         # Generate and send ICS if deadline exists
         if opportunity.deadline:
