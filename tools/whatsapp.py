@@ -214,7 +214,31 @@ class TwilioWhatsAppSender(BaseWhatsAppSender):
                        formatted_to, result.sid, result.status)
             return True
         except TwilioException as exc:  # pragma: no cover - network errors
-            logger.error("Error sending Twilio WhatsApp message to %s: %s", to, exc, exc_info=True)
+            error_code = getattr(exc, 'code', None)
+            error_msg = str(exc)
+            
+            # Log detailed error information
+            logger.error(
+                "Error sending Twilio WhatsApp message to %s: %s (Code: %s). "
+                "Account SID: %s, From: %s, To: %s",
+                to, error_msg, error_code,
+                settings.twilio_account_sid[:10] + "..." if settings.twilio_account_sid else "NOT SET",
+                self.from_number, formatted_to
+            )
+            
+            # Specific handling for common errors
+            if error_code == 20404:
+                logger.error(
+                    "Twilio 404 Error: Account not found. Please verify:\n"
+                    "1. TWILIO_ACCOUNT_SID is correct\n"
+                    "2. TWILIO_AUTH_TOKEN is correct\n"
+                    "3. Account is active in Twilio console"
+                )
+            elif error_code == 20003:
+                logger.error("Twilio Authentication Error: Check TWILIO_AUTH_TOKEN")
+            elif error_code == 21211:
+                logger.error("Twilio Invalid Number: Check recipient number format")
+            
             return False
 
     def send_document(self, to: str, document_path: str, caption: Optional[str] = None) -> bool:
