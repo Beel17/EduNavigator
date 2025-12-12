@@ -85,7 +85,12 @@ async def process_incoming_message(from_number: str, message_text: str, db: Sess
         db.commit()
         whatsapp_sender.send_text(
             from_number,
-            "Welcome! You are now subscribed. Send 'digest' for weekly digest or ask a question.",
+            "Welcome! You are now subscribed.\n\n"
+            "You can try:\n"
+            "- 'digest' → top 3 recent opportunities\n"
+            "- '1'/'2'/'3' → proposal for the digest item\n"
+            "- Any question → ask about scholarships/grants/policies\n"
+            "- 'STOP' → unsubscribe"
         )
         return
 
