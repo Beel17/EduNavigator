@@ -54,10 +54,14 @@ class Settings(BaseSettings):
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
     api_port: int = int(os.getenv("API_PORT", "8000"))
+    public_base_url: str = os.getenv("PUBLIC_BASE_URL", "")
+    send_digest_after_cron: bool = os.getenv("SEND_DIGEST_AFTER_CRON", "false").lower() == "true"
     
     # Security
     secret_key: str = os.getenv("SECRET_KEY", "change-me-in-production")
     allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000")
+    proposal_link_secret: str = os.getenv("PROPOSAL_LINK_SECRET", "")
+    proposal_link_ttl_seconds: int = int(os.getenv("PROPOSAL_LINK_TTL_SECONDS", "604800"))  # 7 days
     
     # Cron Schedule
     cron_schedule: str = os.getenv("CRON_SCHEDULE", "0 6 * * *")
@@ -79,4 +83,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

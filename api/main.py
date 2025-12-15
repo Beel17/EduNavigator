@@ -1,8 +1,11 @@
 """FastAPI application."""
 import logging
 import os
+import hmac
+import hashlib
+import time
 from fastapi import FastAPI, Request, Response, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
 import json
@@ -26,6 +29,13 @@ app = FastAPI(title="Nigerian Grants Agent", version="1.0.0")
 whatsapp_sender: BaseWhatsAppSender = get_whatsapp_sender()
 agent_router = AgentRouter()
 proposal_writer = ProposalWriter()
+
+
+def _sign_proposal_link(proposal_id: int, pdf_path: str, expires_at: int) -> str:
+    """Create HMAC signature for proposal link."""
+    msg = f"{proposal_id}:{expires_at}:{pdf_path}".encode()
+    secret = settings.proposal_link_secret.encode()
+    return hmac.new(secret, msg, hashlib.sha256).hexdigest()
 
 
 def normalize_whatsapp_number(number: Optional[str]) -> str:
@@ -228,6 +238,31 @@ async def handle_whatsapp_webhook(request: Request, db: Session = Depends(get_db
 async def legacy_handle_webhook(request: Request, db: Session = Depends(get_db)):
     """Legacy webhook endpoint for backwards compatibility."""
     return await handle_whatsapp_webhook(request, db)
+
+
+@app.get("/proposals/{proposal_id}")
+async def get_proposal(proposal_id: int, exp: int, sig: str, db: Session = Depends(get_db)):
+    """Serve proposal PDF via signed link."""
+    if not settings.proposal_link_secret:
+        raise HTTPException(status_code=404, detail="Link sharing not configured")
+    
+    now_ts = int(time.time())
+    if now_ts > exp:
+        raise HTTPException(status_code=403, detail="Link expired")
+    
+    proposal = db.query(Proposal).filter(Proposal.id == proposal_id).first()
+    if not proposal or not proposal.pdf_path:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    
+    expected_sig = _sign_proposal_link(proposal_id, proposal.pdf_path, exp)
+    if not hmac.compare_digest(expected_sig, sig):
+        raise HTTPException(status_code=403, detail="Invalid signature")
+    
+    if not os.path.exists(proposal.pdf_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    filename = os.path.basename(proposal.pdf_path)
+    return FileResponse(proposal.pdf_path, media_type="application/pdf", filename=filename)
 
 
 async def handle_meta_webhook(request: Request, db: Session) -> JSONResponse:
@@ -475,75 +510,59 @@ async def handle_proposal_request(from_number: str, item_num: int, db: Session):
         from rag.store import RAGStore
         rag_store = RAGStore()
         chunks = rag_store.query(opportunity.title, top_k=5)
-        
-        if is_twilio:
-            # For Twilio: Generate and send text proposal directly
-            deadline_str = opportunity.deadline.isoformat() if opportunity.deadline else None
-            proposal_text = proposal_writer.generate_proposal_text(
+
+        # Ensure we have a PDF and Proposal record (used for both Meta and link)
+        if not proposal:
+            pdf_path = proposal_writer.generate_proposal_pdf(
                 opportunity_title=opportunity.title,
                 agency=opportunity.agency,
-                deadline=deadline_str,
+                deadline=opportunity.deadline.isoformat() if opportunity.deadline else None,
                 amount=opportunity.amount,
                 chunks=chunks
             )
-            
-            # Send text proposal
-            success = whatsapp_sender.send_proposal_text(
-                to=from_number,
-                proposal_text=proposal_text,
-                opportunity_title=opportunity.title
+            proposal = Proposal(
+                opportunity_id=opportunity.id,
+                pdf_path=pdf_path,
+                summary=opportunity.title
             )
-            
-            if not success:
+            db.add(proposal)
+            db.commit()
+        else:
+            pdf_path = proposal.pdf_path
+
+        if is_twilio:
+            # Generate signed link if configured
+            if settings.public_base_url and settings.proposal_link_secret:
+                expires_at = int(time.time()) + settings.proposal_link_ttl_seconds
+                sig = _sign_proposal_link(proposal.id, pdf_path, expires_at)
+                link = f"{settings.public_base_url}/proposals/{proposal.id}?exp={expires_at}&sig={sig}"
                 whatsapp_sender.send_text(
                     from_number,
-                    f"Sorry, there was an error sending the proposal for: {opportunity.title}"
+                    f"Proposal for: {opportunity.title}\n{link}"
                 )
-        else:
-            # For Meta: Generate PDF and send document
-            # Check if proposal exists
-            proposal = db.query(Proposal).filter(
-                Proposal.opportunity_id == opportunity.id
-            ).order_by(Proposal.created_at.desc()).first()
-            
-            if not proposal:
-                # Generate PDF
-                pdf_path = proposal_writer.generate_proposal_pdf(
-                    opportunity_title=opportunity.title,
-                    agency=opportunity.agency,
-                    deadline=opportunity.deadline.isoformat() if opportunity.deadline else None,
-                    amount=opportunity.amount,
-                    chunks=chunks
-                )
-                
-                # Save proposal
-                proposal = Proposal(
-                    opportunity_id=opportunity.id,
-                    pdf_path=pdf_path,
-                    summary=opportunity.title
-                )
-                db.add(proposal)
-                db.commit()
             else:
-                pdf_path = proposal.pdf_path
-            
-            # Send PDF
-            whatsapp_sender.send_document(
-                from_number,
-                pdf_path,
-                caption=f"Proposal for: {opportunity.title}"
-            )
+                whatsapp_sender.send_text(
+                    from_number,
+                    f"Proposal for: {opportunity.title} is ready, but link sharing is not configured."
+                )
+            return
+
+        # Meta: send PDF document
+        whatsapp_sender.send_document(
+            from_number,
+            pdf_path,
+            caption=f"Proposal for: {opportunity.title}"
+        )
         
-        # Generate and send ICS if deadline exists
-        if opportunity.deadline:
+        # Generate and send ICS if deadline exists (Meta only)
+        if not is_twilio and opportunity.deadline:
             ics_path = generate_ics(
                 title=opportunity.title,
                 deadline=opportunity.deadline,
                 description=f"Deadline for {opportunity.title}",
                 url=opportunity.url
             )
-            # Note: WhatsApp doesn't support ICS directly, so we'd need to convert or send as document
-            # For now, we'll just send the PDF
+            # Note: WhatsApp doesn't support ICS directly for Twilio
         
     except Exception as e:
         logger.error(f"Error handling proposal request: {e}")
@@ -627,19 +646,22 @@ async def run_cron(db: Session = Depends(get_db)):
                     logger.error(f"Error crawling source {source_config.name}: {e}")
                     continue
         
-        # Send digests to active subscribers
-        subscribers = db.query(Subscriber).filter(
-            Subscriber.active == True,
-            Subscriber.channel == "whatsapp"
-        ).all()
-        
         digest_count = 0
-        for subscriber in subscribers:
-            try:
-                await handle_digest_request(subscriber.handle, db)
-                digest_count += 1
-            except Exception as e:
-                logger.error(f"Error sending digest to {subscriber.handle}: {e}")
+        if settings.send_digest_after_cron:
+            # Send digests to active subscribers
+            subscribers = db.query(Subscriber).filter(
+                Subscriber.active == True,
+                Subscriber.channel == "whatsapp"
+            ).all()
+            
+            for subscriber in subscribers:
+                try:
+                    await handle_digest_request(subscriber.handle, db)
+                    digest_count += 1
+                except Exception as e:
+                    logger.error(f"Error sending digest to {subscriber.handle}: {e}")
+        else:
+            logger.info("Skipping digest send after cron (SEND_DIGEST_AFTER_CRON=false)")
         
         return {
             "status": "success",
