@@ -61,7 +61,14 @@ class Settings(BaseSettings):
     secret_key: str = os.getenv("SECRET_KEY", "change-me-in-production")
     allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000")
     proposal_link_secret: str = os.getenv("PROPOSAL_LINK_SECRET", "")
-    proposal_link_ttl_seconds: int = int(os.getenv("PROPOSAL_LINK_TTL_SECONDS", "604800"))  # 7 days
+    
+    # Parse TTL with error handling for invalid values (default: 7 days = 604800 seconds)
+    _ttl_str = os.getenv("PROPOSAL_LINK_TTL_SECONDS", "604800")
+    try:
+        _ttl_value = int(_ttl_str.strip())
+    except (ValueError, AttributeError, TypeError):
+        _ttl_value = 604800  # Default: 7 days
+    proposal_link_ttl_seconds: int = _ttl_value
     
     # Cron Schedule
     cron_schedule: str = os.getenv("CRON_SCHEDULE", "0 6 * * *")
