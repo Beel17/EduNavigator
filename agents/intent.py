@@ -15,38 +15,30 @@ class Intent(str, Enum):
     QUERY = "query"
 
 
-# Phrases that mean "give me the digest / latest opportunities"
-DIGEST_KEYWORDS = [
-    "digest",
-    "latest",
-    "new",
-    "recent",
-    "top",
-    "list",
-    "show",
-    "send",
-    "get",
-    "give",
+# Only these single words trigger digest (no "scholarships"/"grants" so "engineering scholarships" stays query)
+DIGEST_SHORT = {"digest", "latest", "new", "recent", "list", "top", "grants", "opportunities", "summary"}
+
+# For 2+ word messages: digest only if message contains one of these phrases (not just any word like "scholarships")
+# So "engineering scholarships" and "scholarships for Nigerian students" never match → QUERY
+DIGEST_REQUEST_PHRASES = [
     "what's new",
     "whats new",
     "any new",
     "any opportunities",
-    "opportunities",
-    "grants",
-    "scholarships",
-    "fellowships",
-    "funding",
-    "openings",
-    "calls",
-    "deadlines",
-    "remind",
-    "summary",
-    "today",
+    "show me",
+    "send me",
+    "get me",
+    "give me",
+    "list of",
+    "top opportunities",
+    "latest opportunities",
+    "new opportunities",
+    "recent opportunities",
+    "new grants",
+    "latest grants",
     "this week",
+    "today",
 ]
-
-# Single-word digest triggers (exact or very short message)
-DIGEST_SHORT = {"digest", "latest", "new", "recent", "list", "top", "grants", "opportunities", "summary"}
 
 # Proposal: "1", "2", "3", "first", "second", "third", "proposal 1", "proposal for 2", "I want 1", "number 2"
 PROPOSAL_NUMBER_PATTERN = re.compile(
@@ -65,12 +57,14 @@ def _normalize(text: str) -> str:
 
 def _contains_digest_intent(text: str) -> bool:
     normalized = _normalize(text)
-    # Short message: exact match to digest short set
-    words = set(normalized.split())
-    if len(words) <= 2 and (words & DIGEST_SHORT):
-        return True
-    # Longer: check for digest phrases
-    for phrase in DIGEST_KEYWORDS:
+    words = normalized.split()
+    # Exactly one word: digest only if it's a clear command (digest, latest, grants, etc.)
+    # "scholarships" is NOT in DIGEST_SHORT, so "scholarships" alone → query
+    if len(words) == 1:
+        return words[0] in DIGEST_SHORT
+    # Two or more words: digest only if message contains an explicit "give me the digest" phrase
+    # "engineering scholarships", "scholarships for Nigerian students" have no such phrase → QUERY
+    for phrase in DIGEST_REQUEST_PHRASES:
         if phrase in normalized:
             return True
     return False
