@@ -620,21 +620,27 @@ def _search_opportunities_by_query(db: Session, query: str, limit: int = 5):
 
 
 async def handle_query(from_number: str, query: str, db: Session):
-    """Handle general query: RAG answer plus matching opportunities from DB."""
+    """Handle general query: conversational LLM reply (using RAG + opportunities) or fallback."""
     try:
-        # Route query through agent (RAG)
+        # Get candidate opportunities (keyword match; pass more so LLM can pick by relevance)
+        matching = _search_opportunities_by_query(db, query, limit=12)
+        if matching:
+            # Prefer LLM-generated conversational reply (uses RAG + picks most relevant opportunities)
+            conversational = agent_router.answer_query_conversational(
+                query, opportunities=matching, top_k_rag=4, max_reply_chars=1200
+            )
+            if conversational:
+                whatsapp_sender.send_text(from_number, conversational)
+                return
+            # Fallback when LLM unavailable or errors: RAG answer + list
         result = agent_router.answer_query(query, top_k=4)
         answer = result.answer
-
-        # Append opportunities that match the query (title/eligibility/agency)
-        matching = _search_opportunities_by_query(db, query, limit=5)
         if matching:
             answer += "\n\nMatching opportunities:\n"
-            for i, opp in enumerate(matching, 1):
+            for i, opp in enumerate(matching[:5], 1):
                 answer += f"{i}) {opp.title}\n{opp.url}\n"
             if len(answer) > 1500:
                 answer = answer[:1470] + "\n..."
-
         whatsapp_sender.send_text(from_number, answer)
     except Exception as e:
         logger.error(f"Error handling query: {e}")
