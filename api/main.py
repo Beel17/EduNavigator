@@ -16,6 +16,7 @@ from database.models import Subscriber, Opportunity, Proposal
 from tools.whatsapp import get_whatsapp_sender, BaseWhatsAppSender
 from agents.router import AgentRouter
 from agents.proposal_writer import ProposalWriter
+from agents.intent import detect_intent, Intent
 from tools.ics_generator import generate_ics
 from datetime import datetime
 
@@ -57,10 +58,11 @@ async def process_incoming_message(from_number: str, message_text: str, db: Sess
     if not text_clean:
         return
 
-    upper_text = text_clean.upper()
+    # Intent-based routing (handles natural language: "latest", "show me grants", "1", "proposal 2", etc.)
+    intent, proposal_num = detect_intent(text_clean)
 
     # Handle unsubscribe
-    if upper_text in ["STOP", "UNSUBSCRIBE"]:
+    if intent == Intent.UNSUBSCRIBE:
         subscriber = (
             db.query(Subscriber)
             .filter(Subscriber.handle == from_number, Subscriber.channel == "whatsapp")
@@ -76,7 +78,7 @@ async def process_incoming_message(from_number: str, message_text: str, db: Sess
         return
 
     # Handle subscribe
-    if upper_text in ["SUBSCRIBE", "START"]:
+    if intent == Intent.SUBSCRIBE:
         subscriber = (
             db.query(Subscriber)
             .filter(Subscriber.handle == from_number, Subscriber.channel == "whatsapp")
@@ -97,21 +99,21 @@ async def process_incoming_message(from_number: str, message_text: str, db: Sess
             from_number,
             "Welcome! You are now subscribed.\n\n"
             "You can try:\n"
-            "- 'digest' → top 3 recent opportunities\n"
+            "- 'digest' or 'latest' → top 3 recent opportunities\n"
             "- '1'/'2'/'3' → proposal for the digest item\n"
             "- Any question → ask about scholarships/grants/policies\n"
             "- 'STOP' → unsubscribe"
         )
         return
 
-    # Handle digest request
-    if text_clean.lower() == "digest":
+    # Handle digest request (keyword or natural language: "digest", "latest", "show me grants", etc.)
+    if intent == Intent.DIGEST:
         await handle_digest_request(from_number, db)
         return
 
-    # Handle numbered proposal request
-    if text_clean.isdigit():
-        await handle_proposal_request(from_number, int(text_clean), db)
+    # Handle proposal request (1, 2, 3 or "first", "proposal for 2", etc.)
+    if intent == Intent.PROPOSAL and proposal_num is not None:
+        await handle_proposal_request(from_number, proposal_num, db)
         return
 
     # Default: treat as general query
@@ -475,6 +477,7 @@ async def handle_digest_request(from_number: str, db: Session):
 
 async def handle_proposal_request(from_number: str, item_num: int, db: Session):
     """Handle proposal request (1, 2, 3, etc.)."""
+    opportunity = None
     try:
         # Get opportunities (same logic as digest) - include those with future deadlines or no deadline
         from sqlalchemy import or_
@@ -565,25 +568,74 @@ async def handle_proposal_request(from_number: str, item_num: int, db: Session):
             # Note: WhatsApp doesn't support ICS directly for Twilio
         
     except Exception as e:
-        logger.error(f"Error handling proposal request: {e}")
-        whatsapp_sender.send_text(
-            from_number,
-            "Sorry, there was an error generating the proposal. Please try again later."
+        logger.error(f"Error handling proposal request: {e}", exc_info=True)
+        
+        # Fallback: send opportunity link so user still gets value
+        if opportunity:
+            deadline_str = ""
+            if opportunity.deadline:
+                deadline_str = f"\nDeadline: {opportunity.deadline.strftime('%Y-%m-%d')}"
+            whatsapp_sender.send_text(
+                from_number,
+                "I couldn't generate the full proposal, but here's the opportunity:\n"
+                f"{opportunity.title}\n{opportunity.url}{deadline_str}"
+            )
+            return
+        
+        error_str = str(e).lower()
+        if "invalid api key" in error_str or "401" in error_str or "authentication" in error_str:
+            error_message = (
+                "Sorry, I couldn't generate the proposal because the AI service API key is invalid or expired. "
+                "Please contact support to fix this issue."
+            )
+        else:
+            error_message = "Sorry, there was an error generating the proposal. Please try again later."
+        
+        whatsapp_sender.send_text(from_number, error_message)
+
+
+def _search_opportunities_by_query(db: Session, query: str, limit: int = 5):
+    """Return opportunities whose title, eligibility, or agency match any word in the query (most recent first)."""
+    from sqlalchemy import or_
+    words = [w.strip().lower() for w in query.split() if len(w.strip()) > 1]
+    if not words:
+        return []
+    conditions = []
+    for word in words:
+        pattern = f"%{word}%"
+        conditions.append(
+            or_(
+                Opportunity.title.ilike(pattern),
+                Opportunity.eligibility.ilike(pattern),
+                Opportunity.agency.ilike(pattern),
+            )
         )
+    return (
+        db.query(Opportunity)
+        .filter(or_(*conditions))
+        .order_by(Opportunity.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 async def handle_query(from_number: str, query: str, db: Session):
-    """Handle general query."""
+    """Handle general query: RAG answer plus matching opportunities from DB."""
     try:
-        # Route query through agent
+        # Route query through agent (RAG)
         result = agent_router.answer_query(query, top_k=4)
-        
-        # Format answer with citations
         answer = result.answer
-        
-        # Send answer
+
+        # Append opportunities that match the query (title/eligibility/agency)
+        matching = _search_opportunities_by_query(db, query, limit=5)
+        if matching:
+            answer += "\n\nMatching opportunities:\n"
+            for i, opp in enumerate(matching, 1):
+                answer += f"{i}) {opp.title}\n{opp.url}\n"
+            if len(answer) > 1500:
+                answer = answer[:1470] + "\n..."
+
         whatsapp_sender.send_text(from_number, answer)
-        
     except Exception as e:
         logger.error(f"Error handling query: {e}")
         whatsapp_sender.send_text(
