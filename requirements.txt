@@ -32,7 +32,7 @@ httpx==0.25.2
 # PDF Processing
 pypdf2==3.0.1
 pdfplumber==0.10.3
-pydyf>=0.11.0
+pydyf==0.10.0
 weasyprint==60.2
 reportlab==4.0.7
 markdown==3.5.1
